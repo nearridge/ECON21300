@@ -1,0 +1,27 @@
+Assignment 1: Econ 213
+
+Spring 2020
+
+Due April 14, by midnight Chicago time
+
+(completed problem sets will be accepted with a penalty until the start of class on April 15.  No problem sets will be accepted after that, because we will talk about the exercise in class on April 15.)
+
+You can use any programming language you want.
+
+Please submit: the answers to the questions, your code, and your dataset.  The code you provide should reproduce your model.  All of these should be submitted via canvas.
+
+If you are uncomfortable with the subject matter, I will offer you an alternative assignment,
+
+______________
+
+The Governor of Illinois, J. B. Pritzker, has decided that a key input to public policy is knowing how many people will die from Covid-19 in the near future.  He has asked you to estimate the total number of official Covid-19 deaths that will be officially recorded in the state of Illinois by April 21 and by May 31.
+
+To fulfill that request, you will need to assemble a data set, do estimation based on that data, and have some sort of theoretical model in your mind to extrapolate out to the future.
+
+Describe the data set that you chose to assemble and the rationale behind the choices you made in deciding what data to use.
+Describe the model(s) that you settled on for estimation. What was your logic for using that/those particular models?
+Provide an exact number which is your prediction for cumulative official Illinois Covid deaths through April 21
+Provide an exact number which is your prediction for cumulative official Illinois Covid deaths through May 31
+How did you get from the estimates in (2) to the predictions in (3) and (4)?
+You don’t have to provide exact numbers, but discuss what you think the standard errors associated with your estimates might be, and your rationale for thinking those would be the standard errors.
+Make exactly one pretty picture/graph/slide that you would show to the Governor to allow him to easily understand what he should be expecting in terms of Covid deaths.
