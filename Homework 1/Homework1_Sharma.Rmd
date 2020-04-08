@@ -1,30 +1,90 @@
 ---
-title: "Homework1_Sharma"
+title: "Homework 1: Estimating Covid-19 Deaths"
 author: "Neeraj Sharma"
 date: "4/7/2020"
-output: html_document
+output: pdf_document
 ---
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## R Markdown
+## Assignment
 
-This is an R Markdown document. Markdown is a simple formatting syntax for authoring HTML, PDF, and MS Word documents. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+Please submit: the answers to the questions, your code, and your dataset.  The code you provide should reproduce your model.  All of these should be submitted via canvas.
 
-When you click the **Knit** button a document will be generated that includes both content as well as the output of any embedded R code chunks within the document. You can embed an R code chunk like this:
+The Governor of Illinois, J. B. Pritzker, has decided that a key input to public policy is knowing how many people will die from Covid-19 in the near future.  He has asked you to estimate the total number of official Covid-19 deaths that will be officially recorded in the state of Illinois by April 21 and by May 31.
 
-```{r cars}
-summary(cars)
+To fulfill that request, you will need to assemble a data set, do estimation based on that data, and have some sort of theoretical model in your mind to extrapolate out to the future.
+
+* Describe the data set that you chose to assemble and the rationale behind the choices you made in deciding what data to use.
+* Describe the model(s) that you settled on for estimation. What was your logic for using that/those particular models?
+* Provide an exact number which is your prediction for cumulative official Illinois Covid deaths through April 21
+* Provide an exact number which is your prediction for cumulative official Illinois Covid deaths through May 31
+* How did you get from the estimates in (2) to the predictions in (3) and (4)?
+* You don’t have to provide exact numbers, but discuss what you think the standard errors associated with your estimates might be, and your rationale for thinking those would be the standard errors.
+* Make exactly one pretty picture/graph/slide that you would show to the Governor to allow him to easily understand what he should be expecting in terms of Covid deaths.
+
+## Introduction
+
+In December 2019, scientists in China reported the discovery of a novel coronavirus originating from a wild seafood and exotic animal market in the city of Wuhan, Hubei Provence, China. Over the subsequent months, the virus spread over the world, infecting individuals on all populated continents and in nearly every country. The assignment given is to provide a prediction of deaths that might occur by April 21 and by May 31 in the state of Illinois for consideration by JB Pritzker.^[https://www.nytimes.com/article/coronavirus-timeline.html] 
+
+```{r Loading Packages, message=FALSE}
+library(tidyverse)
+library(readr)
+library(curl)
 ```
 
-## Including Plots
+## Describe the data set that you chose to assemble and the rationale behind the choices you made in deciding what data to use.
 
-You can also embed plots, for example:
+I draw on data provided by the Johns Hopkins Center for Systems Science and Engineering (CSSE). The CSSE provides detailed data on COVID cases in the United States all the way down to the City level. https://github.com/CSSEGISandData/COVID-19. 
 
-```{r pressure, echo=FALSE}
-plot(pressure)
+Cases
+
+```{r Building Cases Dataset, message=FALSE, warning=FALSE}
+# Pulls in the most recent version of COVID 19 cases from CSSE github repo.
+# A static version dated April 8 is saved under "Raw Data" subfolder. 
+cases_covid_url <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv"
+cases_raw <- read_csv(curl(cases_covid_url))
+
+# Create tidy DF of COVID data for IL only
+cases_IL_only <- cases_raw %>%
+  filter(Province_State == "Illinois") %>%
+  select(-UID, -iso2, -iso3, -code3, -FIPS, -Province_State, -Country_Region, -Lat, -Long_) %>%
+  pivot_longer(c(-Admin2, -Combined_Key), names_to = "date", values_to = "cases") %>%
+  mutate(date = as.Date(date, "%m/%d/%y"))
+
+cases_total_IL<- cases_IL_only %>%
+  group_by(date) %>%
+  summarize(count = sum(cases))
 ```
 
-Note that the `echo = FALSE` parameter was added to the code chunk to prevent printing of the R code that generated the plot.
+Deaths
+
+```{r Building Deaths Dataset, message=FALSE, warning=FALSE}
+deaths_covid_url <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_US.csv"
+deaths_raw <- read_csv(curl(deaths_covid_url))
+
+# Create tidy DF of COVID data for IL only
+deaths_IL_only <- deaths_raw %>%
+  filter(Province_State == "Illinois") %>%
+  select(-UID, -iso2, -iso3, -code3, -FIPS, -Province_State, -Country_Region, -Lat, -Long_) %>%
+  pivot_longer(c(-Admin2, -Combined_Key, -Population), names_to = "date", values_to = "deaths") %>%
+  mutate(date = as.Date(date, "%m/%d/%y"))
+
+deaths_total_IL<- deaths_IL_only %>%
+  group_by(date) %>%
+  summarize(count = sum(deaths))
+
+full_joined <- left_join(deaths_IL_only, cases_IL_only)
+```
+
+This Johns hopkins dataset doesn't have information on United States COVID recoveries for some reason. I incorperate that from
+
+Overlay plot
+
+```{r}
+ggplot() +
+  geom_path(data = deaths_total_IL, mapping = aes(x = date, y = count, color = "Deaths")) + 
+  geom_path(data = cases_total_IL, mapping = aes(x = date, y = count, color = "Cases"))
+```
