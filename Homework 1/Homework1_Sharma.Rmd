@@ -33,58 +33,61 @@ In December 2019, scientists in China reported the discovery of a novel coronavi
 library(tidyverse)
 library(readr)
 library(curl)
+library(modelr)
+library(broom)
+library(here)
 ```
 
 ## Describe the data set that you chose to assemble and the rationale behind the choices you made in deciding what data to use.
 
-I draw on data provided by the Johns Hopkins Center for Systems Science and Engineering (CSSE). The CSSE provides detailed data on COVID cases in the United States all the way down to the City level. https://github.com/CSSEGISandData/COVID-19. 
-
-Cases
-
+I draw on data provided by the Johns Hopkins Center for Systems Science and Engineering (CSSE). The CSSE provides detailed data on COVID cases in the United States all the way down to the City level. https://github.com/CSSEGISandData/COVID-19. The CSSE stopped providing data for recoveries from COVID for the United States specifically as they found "no reliable data source reporting recovered cases for many countries, such as the US."^[https://github.com/CSSEGISandData/COVID-19/issues/1250#issuecomment-602271179]
+  
 ```{r Building Cases Dataset, message=FALSE, warning=FALSE}
-# Pulls in the most recent version of COVID 19 cases from CSSE github repo.
-# A static version dated April 8 is saved under "Raw Data" subfolder. 
-cases_covid_url <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv"
-cases_raw <- read_csv(curl(cases_covid_url))
+# Pulls in the most recent version of COVID 19 cases and deaths from CSSE github repo.
+# Static versions of both of these datasets dated April 9 are saved in "Raw Data" subfolder. 
+cases_raw <- read_csv(curl("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv"))
+deaths_raw <- read_csv(curl("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_US.csv"))
 
-# Create tidy DF of COVID data for IL only
-cases_IL_only <- cases_raw %>%
+# Create tidy DFs of COVID data for IL only
+cases_counties <- cases_raw %>%
   filter(Province_State == "Illinois") %>%
   select(-UID, -iso2, -iso3, -code3, -FIPS, -Province_State, -Country_Region, -Lat, -Long_) %>%
   pivot_longer(c(-Admin2, -Combined_Key), names_to = "date", values_to = "cases") %>%
   mutate(date = as.Date(date, "%m/%d/%y"))
 
-cases_total_IL<- cases_IL_only %>%
-  group_by(date) %>%
-  summarize(count = sum(cases))
-```
-
-Deaths
-
-```{r Building Deaths Dataset, message=FALSE, warning=FALSE}
-deaths_covid_url <- "https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_US.csv"
-deaths_raw <- read_csv(curl(deaths_covid_url))
-
-# Create tidy DF of COVID data for IL only
-deaths_IL_only <- deaths_raw %>%
+deaths_counties <- deaths_raw %>%
   filter(Province_State == "Illinois") %>%
   select(-UID, -iso2, -iso3, -code3, -FIPS, -Province_State, -Country_Region, -Lat, -Long_) %>%
   pivot_longer(c(-Admin2, -Combined_Key, -Population), names_to = "date", values_to = "deaths") %>%
   mutate(date = as.Date(date, "%m/%d/%y"))
 
-deaths_total_IL<- deaths_IL_only %>%
+# Summarizes data to reflect statewide trends
+cases_IL<- cases_counties %>%
   group_by(date) %>%
-  summarize(count = sum(deaths))
+  summarize(cases = sum(cases))
 
-full_joined <- left_join(deaths_IL_only, cases_IL_only)
+deaths_IL <- deaths_counties %>%
+  group_by(date) %>%
+  summarize(deaths = sum(deaths))
+
+# Group together cases and deaths
+cases_deaths_IL <- left_join(cases_IL, deaths_IL) %>%
+  pivot_longer(c(cases, deaths), names_to = "disease status", values_to = "count")
 ```
 
-This Johns hopkins dataset doesn't have information on United States COVID recoveries for some reason. I incorperate that from
+## Describe the model(s) that you settled on for estimation. What was your logic for using that/those particular models?
+
+```{r}
+regres <- glm(deaths ~ date, data = deaths_IL, family = gaussian)
+summary(regres)
+```
 
 Overlay plot
 
 ```{r}
-ggplot() +
-  geom_path(data = deaths_total_IL, mapping = aes(x = date, y = count, color = "Deaths")) + 
-  geom_path(data = cases_total_IL, mapping = aes(x = date, y = count, color = "Cases"))
+ggplot(cases_deaths_IL, aes(x = date, y = count, group = `disease status`, color = `disease status`)) +
+  geom_point() +
+  geom_smooth(method = "glm",
+              method.args = list(family = "poisson"),
+              se = FALSE)
 ```
