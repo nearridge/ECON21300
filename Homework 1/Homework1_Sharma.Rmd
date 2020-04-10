@@ -27,7 +27,7 @@ To fulfill that request, you will need to assemble a data set, do estimation bas
 
 ## Introduction
 
-In December 2019, scientists in China reported the discovery of a novel coronavirus originating from a wild seafood and exotic animal market in the city of Wuhan, Hubei Provence, China. Over the subsequent months, the virus spread over the world, infecting individuals on all populated continents and in nearly every country. The assignment given is to provide a prediction of deaths that might occur by April 21 and by May 31 in the state of Illinois for consideration by JB Pritzker.^[https://www.nytimes.com/article/coronavirus-timeline.html] 
+In December 2019, scientists in China reported the discovery of a novel coronavirus originating from a wild seafood and exotic animal market in the city of Wuhan, Hubei Provence, China. Over the subsequent months, the virus spread over the world, infecting individuals on all populated continents and in nearly every country.^[https://www.nytimes.com/article/coronavirus-timeline.html]  The assignment given is to provide a prediction of deaths that might occur by April 21 and by May 31 in the state of Illinois for consideration by JB Pritzker.
 
 ```{r Loading Packages, message=FALSE}
 library(tidyverse)
@@ -36,15 +36,19 @@ library(curl)
 library(modelr)
 library(broom)
 library(here)
+
+# For security reasons, my personal API key is hidden. Permission to access Census/ACS data
+# to reproduce my results can be granted here: https://api.census.gov/data/key_signup.html
+library(tidycensus)
 ```
 
 ## Describe the data set that you chose to assemble and the rationale behind the choices you made in deciding what data to use.
 
-I draw on data provided by the Johns Hopkins Center for Systems Science and Engineering (CSSE). The CSSE provides detailed data on COVID cases in the United States all the way down to the City level. https://github.com/CSSEGISandData/COVID-19. The CSSE stopped providing data for recoveries from COVID for the United States specifically as they found "no reliable data source reporting recovered cases for many countries, such as the US."^[https://github.com/CSSEGISandData/COVID-19/issues/1250#issuecomment-602271179]
+I draw on [data](https://github.com/CSSEGISandData/COVID-19) provided by the Johns Hopkins Center for Systems Science and Engineering (CSSE). The CSSE provides detailed data on COVID cases in the United States all the way down to the City level. The CSSE stopped providing data for recoveries from COVID for the United States specifically as they found "no reliable data source reporting recovered cases for many countries, such as the US."^[https://github.com/CSSEGISandData/COVID-19/issues/1250#issuecomment-602271179]
   
 ```{r Building Cases Dataset, message=FALSE, warning=FALSE}
 # Pulls in the most recent version of COVID 19 cases and deaths from CSSE github repo.
-# Static versions of both of these datasets dated April 9 are saved in "Raw Data" subfolder. 
+# Static (April 9) versions of both of these datasets  are saved in "Raw Data." 
 cases_raw <- read_csv(curl("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv"))
 deaths_raw <- read_csv(curl("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_US.csv"))
 
@@ -75,6 +79,19 @@ cases_deaths_IL <- left_join(cases_IL, deaths_IL) %>%
   pivot_longer(c(cases, deaths), names_to = "disease status", values_to = "count")
 ```
 
+```{r}
+
+# Hospital data
+# https://hifld-geoplatform.opendata.arcgis.com/datasets/6ac5e325468c4cb9b905f1728d6fbf0f_0?selectedAttribute=BEDS
+# https://www.chicagobusiness.com/static/section/hospital-beds-database.html
+
+ACS_vars_18 <- load_variables(2018, "acs5", cache = TRUE)
+# Collect demographic data on IL counties. 
+get_acs(geography = "county", 
+        variables = c(medincome = "B19013_001"), 
+        year = 2018, state = "Illinois")
+```
+
 ## Describe the model(s) that you settled on for estimation. What was your logic for using that/those particular models?
 
 ```{r}
@@ -82,7 +99,6 @@ regres <- glm(deaths ~ date, data = deaths_IL, family = gaussian)
 summary(regres)
 ```
 
-Overlay plot
 
 ```{r}
 ggplot(cases_deaths_IL, aes(x = date, y = count, group = `disease status`, color = `disease status`)) +
@@ -90,4 +106,12 @@ ggplot(cases_deaths_IL, aes(x = date, y = count, group = `disease status`, color
   geom_smooth(method = "glm",
               method.args = list(family = "poisson"),
               se = FALSE)
+
+ggplot(cases_counties, aes(x = date, y = cases, group = `Admin2`)) +
+  geom_point() +
+  labs(title = "County level cases of covid over time.")
+
+ggplot(cases_counties %>% filter(Admin2 != "Cook"), aes(x = date, y = cases, group = `Admin2`)) +
+  geom_path() +
+  labs(title = "County level cases of covid over time. Not including cook")
 ```
