@@ -84,7 +84,6 @@ cases_deaths_IL <- left_join(cases_IL, deaths_IL) %>%
 ```
 
 ```{r}
-
 # Hospital data
 # https://hifld-geoplatform.opendata.arcgis.com/datasets/6ac5e325468c4cb9b905f1728d6fbf0f_0?selectedAttribute=BEDS
 # https://www.chicagobusiness.com/static/section/hospital-beds-database.html
@@ -107,7 +106,8 @@ brev <- load_variables(2018, "acs5", cache = TRUE) %>%
 
 # Collect demographic data on IL counties. 
 medincome_county_IL <- get_acs(geography = "county", 
-                               variables = c(`median_income-` = "B19013_001", 
+                               variables = c(`population-` = "B01003_001",
+                                             `median_income-` = "B19013_001", 
                                              `num_hh-` = "B10063_001", 
                                              `num_hh_w_people_under18-` = "B11005_002",
                                              `num_hh_w_people_over60-` = "B11006_002", 
