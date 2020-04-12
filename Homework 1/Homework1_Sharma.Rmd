@@ -32,11 +32,11 @@ In December 2019, scientists in China reported the discovery of a novel coronavi
 ```{r Loading Packages, message=FALSE}
 library(tidyverse)
 library(readr)
-library(curl)
 library(modelr)
 library(broom)
 library(here)
 library(lubridate)
+library(fable)
 
 # For security reasons, my personal API key is hidden. Permission to access Census/ACS data
 # to reproduce my results can be granted here: https://api.census.gov/data/key_signup.html
@@ -45,42 +45,32 @@ library(tidycensus)
 
 ## Describe the data set that you chose to assemble and the rationale behind the choices you made in deciding what data to use.
 
-I draw on [data](https://github.com/CSSEGISandData/COVID-19) provided by the Johns Hopkins Center for Systems Science and Engineering (CSSE). The CSSE provides detailed data on COVID cases in the United States all the way down to the City level. The CSSE stopped providing data for recoveries from COVID for the United States specifically as they found "no reliable data source reporting recovered cases for many countries, such as the US."^[https://github.com/CSSEGISandData/COVID-19/issues/1250#issuecomment-602271179]
+My dataset pulls together data from four sources spread across three general categories. The categories I analyze are:
+
+1. COVID
+   i. January 24, 2020 to March 16, 2020 -- Data on cases and deaths as reported by the [New York Times](https://github.com/nytimes/covid-19-data)  
+   i. March 17, 2020 and onwards -- Data on cases, deaths, tested, and negative results from the [Illinois Department of Public Health](https://www.dph.illinois.gov/covid19/covid19-statistics)
+1. Demographics
+   i. County-level demographic data pulled from the 2018 5-year Census American Community Survery
+      a) Population
+      a) Population under 18
+      a) Population enrolled in school
+      a) Median Income 
+      a) Number of Households
+      a) Number of Households with people under 18
+      a) Number of Households with people over 60
+      a) Number of Overcrowded Households
+1. Hospitals
+   i. County-level capacity, load and utilization data aggregated to the county level from the [Illinois Health Facilities and Services Review Board](https://www2.illinois.gov/sites/hfsrb/InventoriesData/FacilityProfiles/Pages/default.aspx)
 
 ```{r Building Cases Dataset, message=FALSE, warning=FALSE}
-# Pulls in the most recent version of COVID 19 cases and deaths from CSSE github repo.
-# Static (April 9) versions of both of these datasets  are saved in "Raw Data." 
-cases_raw <- read_csv(curl("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv"))
-deaths_raw <- read_csv(curl("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_US.csv"))
+# Pulls in dataset produced by dataset_creat.R
+full <- read_csv("20200412_combined_covid_demos_hosp.csv") %>%
+  mutate(per_capita_deaths = deaths/`population-E`) %>%
+  mutate(`socialdistancing?` = if_else(date > as.Date("2020-03-20"), 1, 0))
 
-# Create tidy DFs of COVID data for IL only
-cases_counties <- cases_raw %>%
-  filter(Province_State == "Illinois") %>%
-  select(-UID, -iso2, -iso3, -code3, -FIPS, -Lat, -Long_, -Combined_Key) %>%
-  pivot_longer(c(-Admin2,  -Province_State, -Country_Region), names_to = "date", values_to = "cases") %>%
-  mutate(date = as.Date(date, "%m/%d/%y"))
-
-deaths_counties <- deaths_raw %>%
-  filter(Province_State == "Illinois") %>%
-  select(-UID, -iso2, -iso3, -code3, -FIPS, -Combined_Key, -Lat, -Long_) %>%
-  pivot_longer(c(-Admin2, -Province_State, -Country_Region, -Population), names_to = "date", values_to = "deaths") %>%
-  mutate(date = as.Date(date, "%m/%d/%y"))
-
-# Summarizes data to reflect statewide trends
-cases_IL<- cases_counties %>%
-  group_by(date, Admin2, Province_State, Country_Region) %>%
-  summarize(cases = sum(cases))
-
-deaths_IL <- deaths_counties %>%
-  group_by(date, Admin2, Province_State, Country_Region, Population) %>%
-  summarize(deaths = sum(deaths))
-
-# Group together cases and deaths
-cases_deaths_IL <- left_join(cases_IL, deaths_IL) %>%
-  pivot_longer(c(cases, deaths), names_to = "disease status", values_to = "count") %>%
-  mutate(percapita = count/Population) %>%
-  mutate(days_since_first_case = date - ymd("2020-01-24")) %>%
-  mutate(days_since_sheltering = date - mdy("3/20/2020"))
+# Note: April 21, 2020 is 88 days after the first IL COVID case was recorded on 2020-01-24
+# Note: May 31, 2020 is is 128 days after the first IL COVID case was recorded on 2020-01-24
 ```
 
 ```{r}
@@ -97,66 +87,126 @@ cases_deaths_IL <- left_join(cases_IL, deaths_IL) %>%
 # date implemented social distancing in each county maybe?
 # https://www.finra.org/rules-guidance/key-topics/covid-19/shelter-in-place
 
-ACS_vars_18 <- load_variables(2018, "acs5", cache = TRUE) %>%
-  rename(jdhfjkdfhgjkdfhgjkfdshgjdsfhgjfdshgjkdfhgjkfdghkjfdghjdfshgjsdfhgjkdfshgjkdfhgjfhdsgjksdhfjkghdsfjkghsdfkjghjksdfhgkjsd = concept)
-
-brev <- load_variables(2018, "acs5", cache = TRUE) %>%
-  filter(label == "Estimate!!Total") %>%
-  rename(jdhfjkdfhgjkdfhgjkfdshgjdsfhgjfdshgjkdfhgjkfdghkjfdghjdfshgjsdfhgjkdfshgjkdfhgjfhdsgjksdhfjkghdsfjkghsdfkjghjksdfhgkjsd = concept)
-
-# Collect demographic data on IL counties. 
-medincome_county_IL <- get_acs(geography = "county", 
-                               variables = c(`population-` = "B01003_001",
-                                             `median_income-` = "B19013_001", 
-                                             `num_hh-` = "B10063_001", 
-                                             `num_hh_w_people_under18-` = "B11005_002",
-                                             `num_hh_w_people_over60-` = "B11006_002", 
-                                             num_owneroccupants_morethan1_per_room = "B25014_005", 
-                                             num_owneroccupants_morethan15_per_room = "B25014_006",
-                                             num_owneroccupants_morethan2_per_room = "B25014_007",
-                                             num_renteroccupants_morethan1_per_room = "B25014_011",
-                                             num_renteroccupants_morethan15_per_room = "B25014_012",
-                                             num_renteroccupants_morethan2_per_room = "B25014_013",
-                                             `pop_under18-` = "B09001_001",
-                                             `enrolled_in_school-` = "B14001_002"), 
-                               year = 2018, state = "Illinois", output = "wide") %>%
-  rowwise() %>%
-  mutate(`num_hh_morethan1_person_perroom-E` = sum(num_owneroccupants_morethan1_per_roomE + num_owneroccupants_morethan15_per_roomE + num_owneroccupants_morethan2_per_roomE + num_renteroccupants_morethan1_per_roomE + num_renteroccupants_morethan15_per_roomE + num_renteroccupants_morethan2_per_roomE)) %>%
-  # aggregating error by square rooting the sum of squared errors
-  mutate(`num_hh_morethan1_person_perroom-M` = sqrt(sum(num_owneroccupants_morethan1_per_roomM ^ 2 + num_owneroccupants_morethan15_per_roomM ^
-                                                 2 + num_owneroccupants_morethan2_per_roomM ^ 2 + num_renteroccupants_morethan1_per_roomM ^
-                                                 2 + num_renteroccupants_morethan15_per_roomM ^ 2 + num_renteroccupants_morethan2_per_roomM ^
-                                                 2))) %>%
-  select(-GEOID, -num_owneroccupants_morethan1_per_roomE, -num_owneroccupants_morethan15_per_roomE, -num_owneroccupants_morethan2_per_roomE, -num_renteroccupants_morethan1_per_roomE, -num_renteroccupants_morethan15_per_roomE, -num_renteroccupants_morethan2_per_roomE, -num_owneroccupants_morethan1_per_roomM, -num_owneroccupants_morethan15_per_roomM, -num_owneroccupants_morethan2_per_roomM, -num_renteroccupants_morethan1_per_roomM, -num_renteroccupants_morethan15_per_roomM, -num_renteroccupants_morethan2_per_roomM) %>%
-  separate(NAME, into = c("Admin2", NA), sep = " County, Illinois") %>%
-  pivot_longer(-Admin2, names_to = c("demographic_var", ".value"), names_sep = "-") %>%
-  rename(estimate = E, MOE = M) %>% 
-  arrange(-desc(Admin2))
-
-full <- left_join(cases_deaths_IL, medincome_county_IL)
-
 ```
 
 ## Describe the model(s) that you settled on for estimation. What was your logic for using that/those particular models?
 
 ```{r}
-regres <- glm(deaths ~ date, data = deaths_IL, family = gaussian)
-summary(regres)
+apr <- full %>%
+  select(date, deaths, `socialdistancing?`) %>%
+  group_by(date, `socialdistancing?`) %>%
+  summarize(deaths = sum(deaths)) %>%
+  ungroup() %>%
+  filter(deaths != 0) %>%
+  as_tsibble(index = date)
+
+apr_regres <- model(apr, lm = TSLM(log(deaths) ~ date * `socialdistancing?`))
+
+apr_regres %>% report()
+
+ggplot(augment(apr_regres), aes(x = date)) +
+  geom_line(aes(y = deaths, color = "Deaths")) +
+  geom_line(aes(y = .fitted, color = "Fitted from Model")) +
+  scale_y_log10()
+```
+
+```{r}
+# Population of county over 100,000
+
+apr_highpop <- full %>%
+  filter(county %in% c("Cook", "DuPage","Lake", "Will", "Kane", "McHenry", "Winnebago", "Madison", "St. Clair", "Champaign", "Sangamon", "Peoria", "McLean", "Rock Island", "Tazewell", "Kendall", "Kankakee", "LaSalle", "Macon", "DeKalb")) %>%
+  select(date, deaths, `socialdistancing?`) %>%
+  group_by(date, `socialdistancing?`) %>%
+  summarize(deaths = sum(deaths)) %>%
+  ungroup() %>%
+  filter(deaths != 0) %>%
+  as_tsibble(index = date)
+
+apr_highpop_regres <- model(apr_highpop, lm = TSLM(log(deaths) ~ date * `socialdistancing?`))
+
+apr_highpop_regres %>% report()
+
+ggplot(augment(apr_highpop_regres), aes(x = date)) +
+  geom_line(aes(y = deaths, color = "Deaths")) +
+  geom_line(aes(y = .fitted, color = "Fitted from Model")) +
+  scale_y_log10()
+```
+
+```{r}
+apr_lowpop <- full %>%
+  filter(!(county %in% c("Cook", "DuPage","Lake", "Will", "Kane", "McHenry", "Winnebago", "Madison", "St. Clair", "Champaign", "Sangamon", "Peoria", "McLean", "Rock Island", "Tazewell", "Kendall", "Kankakee", "LaSalle", "Macon", "DeKalb"))) %>%
+  select(date, deaths, `socialdistancing?`) %>%
+  group_by(date, `socialdistancing?`) %>%
+  summarize(deaths = sum(deaths)) %>%
+  ungroup() %>%
+  filter(deaths != 0) %>%
+  as_tsibble(index = date)
+
+apr_lowpop_regres <- model(apr_lowpop, lm = TSLM(log(deaths) ~ date * `socialdistancing?`))
+
+apr_lowpop_regres %>% report()
+
+ggplot(augment(apr_lowpop_regres), aes(x = date)) +
+  geom_line(aes(y = deaths, color = "Deaths")) +
+  geom_line(aes(y = .fitted, color = "Fitted from Model")) +
+  scale_y_log10()
+```
+
+```{r}
+test <- full %>% 
+  select(county, date, cases, `population-E`) %>%
+  filter(cases != 0)
+
+test2 <- as_tsibble(test, index = date, key = county)
+
+regres <- model(test2, tslm = TSLM(log(cases) ~ trend()))
+
+augment(regres)
+
+augment(regres) %>%
+  filter(county != "Cook") %>%
+  ggplot(aes(x = date)) +
+  geom_line(aes(y = cases, group = county)) +
+  geom_line(aes(y = .fitted, group = county, color= "Fitted"))
+
+
+
+```
+
+```{r}
+forecast(model(test2 %>% group_by(date) %>% summarize(cases = sum(cases)), tslm = TSLM(log(cases) ~ date))) %>%
+  autoplot(test2, level = NULL)
 ```
 
 
 ```{r}
-ggplot(cases_deaths_IL %>% group_by(date, `disease status`) %>% summarise(count = sum(count)), aes(x = date, y = count, group = `disease status`, color = `disease status`)) +
+ggplot(full %>% group_by(date) %>% summarise_at(c("cases", "deaths"), sum) %>% pivot_longer(-date, names_to = "disease status", values_to = "count"), aes(x = date, y = count, group = `disease status`, color = `disease status`)) +
   geom_line() +
   geom_smooth(method = "glm",
               method.args = list(family = "poisson"),
-              se = FALSE)
+              se = FALSE) +
+  annotate("segment", x = as.Date("2020-03-20"), xend = as.Date("2020-03-20"), y = 0, yend = 25000, colour = "grey") +
+  annotate("text", x = as.Date("2020-03-05"), y = 24000, label = "Social Distancing Begins")
 
-ggplot(cases_counties, aes(x = date, y = cases, group = `Admin2`)) +
+
+ggplot(full, aes(x = date, y = cases, group = `county`)) +
   geom_point() +
   labs(title = "County level cases of covid over time.") 
 
-ggplot(cases_counties %>% filter(Admin2 != "Cook"), aes(x = date, y = cases, group = `Admin2`)) +
+ggplot(full %>% filter(county != "Cook"), aes(x = date, y = cases, group = `county`)) +
   geom_path() +
   labs(title = "County level cases of covid over time. Not including cook")
+```
+
+```{r}
+ggplot(full %>% group_by(days_since_first_case) %>% summarize_at(c("cases", "deaths", "population-E"), sum) %>% mutate(per_capita_deaths = deaths/`population-E`), aes(x = days_since_first_case, y = per_capita_deaths)) +
+  geom_path() +
+  geom_smooth(method = "glm", method.args = list(family = "binomial"),
+              se = FALSE, fullrange = TRUE)
+
+ggplot(full %>% group_by(days_since_first_case) %>% summarize_at(c("cases", "deaths", "population-E"), sum) %>% mutate(per_capita_deaths = deaths/`population-E`), aes(x = days_since_first_case, y = per_capita_deaths)) +
+  geom_path() +
+  geom_smooth(method = "glm", method.args = list(family = "binomial"),
+              se = FALSE, fullrange = TRUE) +
+  xlim(0, 88)
 ```

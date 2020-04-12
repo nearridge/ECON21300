@@ -92,12 +92,12 @@ demos <- demos_full %>%
   rename(county = Admin2) %>%
   arrange(-desc(county))
 
-covid_demos <- left_join(dph, demos)
+covid_demos <- left_join(covid, demos)
 
 # I grab hospital data from Illinois Health Facilities and Services Review Board
 # https://www2.illinois.gov/sites/hfsrb/InventoriesData/FacilityProfiles/Pages/default.aspx
 
-hosp <- read_excel(path = "Homework 1/Raw Data/2018 AHQ Data File.xls" , col_names = FALSE, sheet = "Hospital Utilization Data")
+hosp <- read_excel(path = "Homework 1/Raw Data/2018 AHQ Data File.xls", col_names = FALSE, sheet = "Hospital Utilization Data")
 
 hosp <- hosp[-4, ]
 hosp[2,] <- str_replace_all(hosp[2,], "[\r\n-/]" , "")
@@ -127,4 +127,4 @@ covid_demos_hosp <- left_join(covid_demos, hosp_county)
 date <- Sys.Date() %>%
   str_replace_all("-","")
 
-write_csv(covid_demos_hosp, paste("Homework 1/", date, "_combined_covid_demos_hosp.csv", sep = ""), na = "NA", col_names = TRUE)
+ write_csv(covid_demos_hosp, paste("Homework 1/", date, "_combined_covid_demos_hosp.csv", sep = ""), na = "NA", col_names = TRUE)
