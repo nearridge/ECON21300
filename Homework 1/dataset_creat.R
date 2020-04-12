@@ -11,8 +11,6 @@ library(here)
 library(stringr)
 library(textclean)
 
-
-
 # For security reasons, my personal API key is hidden. Permission to access Census/ACS data
 # to reproduce my results can be granted here: https://api.census.gov/data/key_signup.html
 library(tidycensus)
@@ -102,27 +100,31 @@ covid_demos <- left_join(dph, demos)
 hosp <- read_excel(path = "Homework 1/Raw Data/2018 AHQ Data File.xls" , col_names = FALSE, sheet = "Hospital Utilization Data")
 
 hosp <- hosp[-4, ]
-hosp[1,8:18] <- paste0("beds", subset(hosp, select = c(8:18))[2,])
-hosp[1,19:24] <- paste0("MedicalSurgicalAdmissions", subset(hosp, select = c(19:24))[2,])
-hosp[1,25:30] <- paste0("PatientDaysOfCare", subset(hosp, select = c(25:30))[2,])
-hosp[1,84:89] <- paste0("AdolescentMentalIllness", subset(hosp, select = c(84:89))[2,])
-hosp[1,90:95] <- paste0("AdultMentalIllness", subset(hosp, select = c(90:95))[2,])
+hosp[2,] <- str_replace_all(hosp[2,], "[\r\n-/]" , "")
+hosp[1,8:18] <- paste0("beds", trimws(subset(hosp, select = c(8:18))[2,]))
+hosp[1,19:24] <- paste0("MedicalSurgicalAdmissions", trimws(subset(hosp, select = c(19:24))[2,]))
+hosp[1,25:30] <- paste0("PatientDaysOfCare", trimws(subset(hosp, select = c(25:30))[2,]))
+hosp[1,84:89] <- paste0("AdolescentMentalIllness", trimws(subset(hosp, select = c(84:89))[2,]))
+hosp[1,90:95] <- paste0("AdultMentalIllness", trimws(subset(hosp, select = c(90:95))[2,]))
 hosp <- hosp[-(2:3), ]
 
 colnames(hosp) <- hosp[1,]
 hosp <- hosp[-1, ]
 
 hosp_full <- hosp %>% 
-  select(Hospital, county = County) %>%
-  select(`bedsMedical- Surgical`)
-         #, `beds-Intensive Care`, `beds-Pediatric`, `beds-Obstetrics/Gynecology`, `beds-Long-Term Care`, `beds-Neonatal ICU`,
- #                                       `beds-Rehabilitation`, `beds-Acute Mental Illness`, `beds-Long-Term Acute Care`, `Direct Admissions to Intensive Care`, `Transfers into  Intensive Care`, 
- #                                       `Patient Days Direct Admissions to Intensive Care`, `Patient Days Transfers to Intensive Care`, `Intensive Care Peak Beds Set Up`)
-         
-         
+  select(county = County, bedsMedicalSurgical, bedsIntensiveCare, bedsTotalCONAuthorizedBeds, `Direct Admissions to Intensive Care`, `Transfers into  Intensive Care`,
+                                        `Patient Days Direct Admissions to Intensive Care`, `Patient Days Transfers to Intensive Care`, `Intensive Care Peak Beds Set Up`) %>%
+  mutate_at(2:9,as.numeric)
+
+hosp_county <- hosp_full %>%
+  group_by(county) %>%
+  summarise_each(funs(sum))
+
+covid_demos_hosp <- left_join(covid_demos, hosp_county)
 
 
 
+date <- Sys.Date() %>%
+  str_replace_all("-","")
 
-
-
+write_csv(covid_demos_hosp, paste("Homework 1/", date, "_combined_covid_demos_hosp.csv", sep = ""), na = "NA", col_names = TRUE)
