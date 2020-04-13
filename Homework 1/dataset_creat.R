@@ -15,9 +15,24 @@ library(textclean)
 # to reproduce my results can be granted here: https://api.census.gov/data/key_signup.html
 library(tidycensus)
 
+# Hospital data
+# https://hifld-geoplatform.opendata.arcgis.com/datasets/6ac5e325468c4cb9b905f1728d6fbf0f_0?selectedAttribute=BEDS
+# https://www.chicagobusiness.com/static/section/hospital-beds-database.html
+
+# mobility data
+#https://www.google.com/covid19/mobility/
+#https://github.com/vitorbaptista/google-covid19-mobility-reports
+#https://ai.googleblog.com/2019/11/new-insights-into-human-mobility-with.html
+#https://www.nature.com/articles/s41467-019-12809-y
+
+# date implemented social distancing in each county maybe?
+# https://www.finra.org/rules-guidance/key-topics/covid-19/shelter-in-place
+
+
+
 NYT <-read_csv(curl("https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"))
 
-dph_json <-read_lines(curl("https://www.dph.illinois.gov/sitefiles/COVIDHistoricalTestResults.json"))
+dph_json <- read_lines(curl("https://www.dph.illinois.gov/sitefiles/COVIDHistoricalTestResults.json"))
 dph_formatted <- dph_json %>% fromJSON()
 dph <- dph_formatted[[5]][[1]] %>%
   unnest(values) %>%
@@ -25,12 +40,16 @@ dph <- dph_formatted[[5]][[1]] %>%
   filter(County != "Illinois") %>%
   mutate(testDate = as.Date(testDate, "%m/%d/%y")) %>%
   rename(date = testDate, county = County, tested = total_tested, cases = confirmed_cases) %>%
-  select(-lat,-lon) %>%
+  select(-lat,-lon, -tested, -negative) %>%
   mutate(county = if_else(county == "Chicago", "Cook", county)) %>%
   mutate(county = if_else(county == "Suburban Cook", "Cook", county)) %>%
+  distinct() %>%
   group_by(date, county) %>%
-  summarise_each(funs(sum))# %>%
- # pivot_longer(c(cases, deaths), names_to = "disease status", values_to = "count")
+  summarise_at(vars(cases, deaths), sum) %>%
+  arrange(-desc(county)) %>%
+  ungroup() 
+
+
 
 # Create tidy DFs of COVID data for IL only
 NYT_counties <- NYT %>%
@@ -42,9 +61,13 @@ NYT_counties <- NYT %>%
 covid <- full_join(NYT_counties, dph) %>%
   arrange(-desc(date)) %>%
   group_by(county) %>%
-  arrange(-desc(county)) %>%
+  arrange(-desc(county)) %>% 
+  mutate(delta_cases = if_else(is.na(lag(county)) | county != lag(county), 0, as.double(cases - lag(cases)))) %>%
+  mutate(delta_deaths = if_else(is.na(lag(county)) | county != lag(county), 0, as.double(deaths - lag(deaths)))) %>%
+  mutate(cases_rate = if_else(is.na(lag(county)) | county != lag(county), 0, as.double(log(cases/lag(cases))))) %>%
+  mutate(deaths_rate = if_else(is.na(lag(county)) | county != lag(county), 0, as.double(log(deaths/lag(deaths))))) %>%
   mutate(days_since_first_case = date - ymd("2020-01-24")) %>%
-  mutate(days_since_sheltering = date - mdy("3/20/2020"))
+  mutate(days_since_sheltering = date - mdy("3/20/2020")) 
 
 demos_full <- get_acs(geography = "county", 
                                variables = c(`population-` = "B01003_001",
@@ -122,9 +145,17 @@ hosp_county <- hosp_full %>%
 
 covid_demos_hosp <- left_join(covid_demos, hosp_county)
 
+# https://github.com/descarteslabs/DL-COVID-19
+mobility <- read_csv(curl("https://raw.githubusercontent.com/descarteslabs/DL-COVID-19/master/DL-us-mobility-daterow.csv")) %>%
+  filter(admin1 == "Illinois") %>%
+  separate(admin2, "county", sep = " County") %>%
+  select(date, county, location_samples = samples, m50) %>%
+  drop_na()
+
+covid_demos_hosp_mobility <- left_join(covid_demos_hosp, mobility)
 
 
 date <- Sys.Date() %>%
   str_replace_all("-","")
 
- write_csv(covid_demos_hosp, paste("Homework 1/", date, "_combined_covid_demos_hosp.csv", sep = ""), na = "NA", col_names = TRUE)
+ write_csv(covid_demos_hosp_mobility, paste("Homework 1/", date, "_combined_covid_demos_hosp_mobility.csv", sep = ""), na = "NA", col_names = TRUE)

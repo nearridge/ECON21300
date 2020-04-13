@@ -22,7 +22,7 @@ To fulfill that request, you will need to assemble a data set, do estimation bas
 * Provide an exact number which is your prediction for cumulative official Illinois Covid deaths through April 21
 * Provide an exact number which is your prediction for cumulative official Illinois Covid deaths through May 31
 * How did you get from the estimates in (2) to the predictions in (3) and (4)?
-* You don’t have to provide exact numbers, but discuss what you think the standard errors associated with your estimates might be, and your rationale for thinking those would be the standard errors.
+* Provide an exact number of your best guess of the 90-10 confidence interval for your estimates in questions 3 and 4 (those confidence intervals obviously can be different from one another). A 90-10 confidence interval is the range that would encompass the true value 80 percent of the time. I don't want you necessarily to provide the standard error churned out by the computer, but something more thoughtful. Discuss the thought process/rationale underlying the standard errors you choose.
 * Make exactly one pretty picture/graph/slide that you would show to the Governor to allow him to easily understand what he should be expecting in terms of Covid deaths.
 
 ## Introduction
@@ -33,10 +33,13 @@ In December 2019, scientists in China reported the discovery of a novel coronavi
 library(tidyverse)
 library(readr)
 library(modelr)
+library(curl)
 library(broom)
 library(here)
 library(lubridate)
 library(fable)
+library(tsibble)
+
 
 # For security reasons, my personal API key is hidden. Permission to access Census/ACS data
 # to reproduce my results can be granted here: https://api.census.gov/data/key_signup.html
@@ -62,151 +65,61 @@ My dataset pulls together data from four sources spread across three general cat
       a) Number of Overcrowded Households
 1. Hospitals
    i. County-level capacity, load and utilization data aggregated to the county level from the [Illinois Health Facilities and Services Review Board](https://www2.illinois.gov/sites/hfsrb/InventoriesData/FacilityProfiles/Pages/default.aspx)
+1. Mobility
+   i. Median distance traveled by cellphone pings. 
 
 ```{r Building Cases Dataset, message=FALSE, warning=FALSE}
 # Pulls in dataset produced by dataset_creat.R
-full <- read_csv("20200412_combined_covid_demos_hosp.csv") %>%
+full <- read_csv("20200413_combined_covid_demos_hosp_mobility.csv") %>%
   mutate(per_capita_deaths = deaths/`population-E`) %>%
-  mutate(`socialdistancing?` = if_else(date > as.Date("2020-03-20"), 1, 0))
+  mutate(`socialdistancing?` = if_else(date > as.Date("2020-03-20"), 1, 0)) %>%
+  mutate(overcrowding = `num_hh_morethan1_person_perroom-E`/`num_hh-E`)
 
 # Note: April 21, 2020 is 88 days after the first IL COVID case was recorded on 2020-01-24
 # Note: May 31, 2020 is is 128 days after the first IL COVID case was recorded on 2020-01-24
 ```
 
-```{r}
-# Hospital data
-# https://hifld-geoplatform.opendata.arcgis.com/datasets/6ac5e325468c4cb9b905f1728d6fbf0f_0?selectedAttribute=BEDS
-# https://www.chicagobusiness.com/static/section/hospital-beds-database.html
-
-# mobility data
-#https://www.google.com/covid19/mobility/
-#https://github.com/vitorbaptista/google-covid19-mobility-reports
-#https://ai.googleblog.com/2019/11/new-insights-into-human-mobility-with.html
-#https://www.nature.com/articles/s41467-019-12809-y
-
-# date implemented social distancing in each county maybe?
-# https://www.finra.org/rules-guidance/key-topics/covid-19/shelter-in-place
-
-```
 
 ## Describe the model(s) that you settled on for estimation. What was your logic for using that/those particular models?
 
+
+
 ```{r}
-apr <- full %>%
-  select(date, deaths, `socialdistancing?`) %>%
+global_cases_raw <- read_csv(curl("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv")) 
+global_deaths_raw <- read_csv(curl("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv")) 
+
+country <- "Mexico"
+
+
+versus <- left_join(global_cases_raw %>%
+  filter(`Country/Region` == country) %>%
+  select(-`Province/State`, -Lat, -Long) %>%
+  pivot_longer(-`Country/Region`, names_to = "date", values_to = "cases"), global_deaths_raw %>%
+  filter(`Country/Region` == country) %>%
+  select(-`Province/State`, -Lat, -Long) %>%
+  pivot_longer(-`Country/Region`, names_to = "date", values_to = "deaths")) %>%
+  filter(cases != 0) %>%
+  pivot_longer(-c(`Country/Region`, date), names_to = "var", values_to = "count") %>%
+  mutate(date = as.Date(date, "%m/%d/%y")) %>%
+  select(-`Country/Region`) %>%
+  mutate(day = as.double(date - ymd("2020-01-31")))
+
+il <- full %>%
+  filter(county %in% highpop) %>%
+  select(date, cases, deaths, delta_cases, delta_deaths, `socialdistancing?`) %>%
   group_by(date, `socialdistancing?`) %>%
-  summarize(deaths = sum(deaths)) %>%
+  summarize(deaths = sum(deaths), cases = sum(cases)) %>%
   ungroup() %>%
-  filter(deaths != 0) %>%
-  as_tsibble(index = date)
+  filter(cases != 0) %>%
+  select(-`socialdistancing?`) %>%
+  pivot_longer(-date, names_to = "var", values_to = "count")  %>%
+  mutate(day = as.double(date - ymd("2020-01-24")))
 
-apr_regres <- model(apr, lm = TSLM(log(deaths) ~ date * `socialdistancing?`))
+ggplot() +
+  geom_line(versus, mapping = aes(x = day, y = count, group = var, color = country)) +
+  geom_line(il, mapping = aes(x = day, y = count, group = var, color = "illinois")) +
+  geom_point(versus %>% filter(day %% 3 == 0), mapping = aes(x = day, y = count, group = var, color = country, shape = var)) +
+  geom_point(il %>% filter(day %% 3 == 0), mapping = aes(x = day, y = count, group = var, color = "illinois", shape = var)) +
+  geom_line(apr_highpop_forecast, mapping = aes(x = day, y = deaths, color = "prediction"))
 
-apr_regres %>% report()
-
-ggplot(augment(apr_regres), aes(x = date)) +
-  geom_line(aes(y = deaths, color = "Deaths")) +
-  geom_line(aes(y = .fitted, color = "Fitted from Model")) +
-  scale_y_log10()
-```
-
-```{r}
-# Population of county over 100,000
-
-apr_highpop <- full %>%
-  filter(county %in% c("Cook", "DuPage","Lake", "Will", "Kane", "McHenry", "Winnebago", "Madison", "St. Clair", "Champaign", "Sangamon", "Peoria", "McLean", "Rock Island", "Tazewell", "Kendall", "Kankakee", "LaSalle", "Macon", "DeKalb")) %>%
-  select(date, deaths, `socialdistancing?`) %>%
-  group_by(date, `socialdistancing?`) %>%
-  summarize(deaths = sum(deaths)) %>%
-  ungroup() %>%
-  filter(deaths != 0) %>%
-  as_tsibble(index = date)
-
-apr_highpop_regres <- model(apr_highpop, lm = TSLM(log(deaths) ~ date * `socialdistancing?`))
-
-apr_highpop_regres %>% report()
-
-ggplot(augment(apr_highpop_regres), aes(x = date)) +
-  geom_line(aes(y = deaths, color = "Deaths")) +
-  geom_line(aes(y = .fitted, color = "Fitted from Model")) +
-  scale_y_log10()
-```
-
-```{r}
-apr_lowpop <- full %>%
-  filter(!(county %in% c("Cook", "DuPage","Lake", "Will", "Kane", "McHenry", "Winnebago", "Madison", "St. Clair", "Champaign", "Sangamon", "Peoria", "McLean", "Rock Island", "Tazewell", "Kendall", "Kankakee", "LaSalle", "Macon", "DeKalb"))) %>%
-  select(date, deaths, `socialdistancing?`) %>%
-  group_by(date, `socialdistancing?`) %>%
-  summarize(deaths = sum(deaths)) %>%
-  ungroup() %>%
-  filter(deaths != 0) %>%
-  as_tsibble(index = date)
-
-apr_lowpop_regres <- model(apr_lowpop, lm = TSLM(log(deaths) ~ date * `socialdistancing?`))
-
-apr_lowpop_regres %>% report()
-
-ggplot(augment(apr_lowpop_regres), aes(x = date)) +
-  geom_line(aes(y = deaths, color = "Deaths")) +
-  geom_line(aes(y = .fitted, color = "Fitted from Model")) +
-  scale_y_log10()
-```
-
-```{r}
-test <- full %>% 
-  select(county, date, cases, `population-E`) %>%
-  filter(cases != 0)
-
-test2 <- as_tsibble(test, index = date, key = county)
-
-regres <- model(test2, tslm = TSLM(log(cases) ~ trend()))
-
-augment(regres)
-
-augment(regres) %>%
-  filter(county != "Cook") %>%
-  ggplot(aes(x = date)) +
-  geom_line(aes(y = cases, group = county)) +
-  geom_line(aes(y = .fitted, group = county, color= "Fitted"))
-
-
-
-```
-
-```{r}
-forecast(model(test2 %>% group_by(date) %>% summarize(cases = sum(cases)), tslm = TSLM(log(cases) ~ date))) %>%
-  autoplot(test2, level = NULL)
-```
-
-
-```{r}
-ggplot(full %>% group_by(date) %>% summarise_at(c("cases", "deaths"), sum) %>% pivot_longer(-date, names_to = "disease status", values_to = "count"), aes(x = date, y = count, group = `disease status`, color = `disease status`)) +
-  geom_line() +
-  geom_smooth(method = "glm",
-              method.args = list(family = "poisson"),
-              se = FALSE) +
-  annotate("segment", x = as.Date("2020-03-20"), xend = as.Date("2020-03-20"), y = 0, yend = 25000, colour = "grey") +
-  annotate("text", x = as.Date("2020-03-05"), y = 24000, label = "Social Distancing Begins")
-
-
-ggplot(full, aes(x = date, y = cases, group = `county`)) +
-  geom_point() +
-  labs(title = "County level cases of covid over time.") 
-
-ggplot(full %>% filter(county != "Cook"), aes(x = date, y = cases, group = `county`)) +
-  geom_path() +
-  labs(title = "County level cases of covid over time. Not including cook")
-```
-
-```{r}
-ggplot(full %>% group_by(days_since_first_case) %>% summarize_at(c("cases", "deaths", "population-E"), sum) %>% mutate(per_capita_deaths = deaths/`population-E`), aes(x = days_since_first_case, y = per_capita_deaths)) +
-  geom_path() +
-  geom_smooth(method = "glm", method.args = list(family = "binomial"),
-              se = FALSE, fullrange = TRUE)
-
-ggplot(full %>% group_by(days_since_first_case) %>% summarize_at(c("cases", "deaths", "population-E"), sum) %>% mutate(per_capita_deaths = deaths/`population-E`), aes(x = days_since_first_case, y = per_capita_deaths)) +
-  geom_path() +
-  geom_smooth(method = "glm", method.args = list(family = "binomial"),
-              se = FALSE, fullrange = TRUE) +
-  xlim(0, 88)
 ```
