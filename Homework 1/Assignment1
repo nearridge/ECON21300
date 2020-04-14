@@ -25,3 +25,7 @@ Provide an exact number which is your prediction for cumulative official Illinoi
 How did you get from the estimates in (2) to the predictions in (3) and (4)?
 Provide an exact number of your best guess of the 90-10 confidence interval for your estimates in questions 3 and 4 (those confidence intervals obviously can be different from one another).  A 90-10 confidence interval is the range that would encompass the true value 80 percent of the time. I don't want you necessarily to provide the standard error churned out by the computer, but something more thoughtful.  Discuss the thought process/rationale underlying  the standard errors you choose.
 Make exactly one pretty picture/graph/slide that you would show to the Governor to allow him to easily understand what he should be expecting in terms of Covid deaths.
+
+Predicting intervals http://www.sthda.com/english/articles/40-regression-analysis/166-predict-in-r-model-predictions-and-confidence-intervals/
+https://stats.stackexchange.com/questions/154346/fitted-confidence-intervals-forecast-function-r
+https://github.com/tidyverts/fasster/issues/38

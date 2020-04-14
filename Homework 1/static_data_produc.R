@@ -3,6 +3,7 @@ library(curl)
 library(stringr)
 library(here)
 library(tidycensus)
+library(jsonlite)
 
 
 # Downloads raw data from CSSE github repo. It is updated daily. 
@@ -12,6 +13,7 @@ deaths_raw <- read_csv(curl("https://raw.githubusercontent.com/CSSEGISandData/CO
 # Downloads raw data from NYT github repo. It is updated daily. 
 NYT <-read_csv(curl("https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"))
 
+# Downloads deographic data from the ACS
 demo_data <- get_acs(geography = "county", 
         variables = c(`population-` = "B01003_001",
                       `median_income-` = "B19013_001",
@@ -27,6 +29,14 @@ demo_data <- get_acs(geography = "county",
                       `pop_under18-` = "B09001_001",
                       `enrolled_in_school-` = "B14001_002"), year = 2018, state = "Illinois", output = "wide")
 
+# Downloads raw mobility data from the Descartes Labs github
+mobility <- read_csv(curl("https://raw.githubusercontent.com/descarteslabs/DL-COVID-19/master/DL-us-mobility-daterow.csv"))
+
+# Downloads raw .json from IL Department of Public Health
+
+dph_json <- read_lines(curl("https://www.dph.illinois.gov/sitefiles/COVIDHistoricalTestResults.json"))
+
+
 # Get current system date
 date <- Sys.Date() %>%
   str_replace_all("-","")
@@ -36,5 +46,9 @@ write_csv(cases_raw, paste("Homework 1/Raw Data/", date, "_JHUcases_US.csv", sep
 write_csv(deaths_raw, paste("Homework 1/Raw Data/", date, "_JHUdeaths_US.csv", sep = ""), na = "NA", col_names = TRUE)
 write_csv(NYT, paste("Homework 1/Raw Data/", date, "_NYT_covid_World.csv", sep = ""), na = "NA", col_names = TRUE)
 write_csv(demo_data, paste("Homework 1/Raw Data/", date, "_ACS_demographics.csv", sep = ""), na = "NA", col_names = TRUE)
+write_csv(demo_data, paste("Homework 1/Raw Data/", date, "_descartes_mobility.csv", sep = ""), na = "NA", col_names = TRUE)
+write_json(dph_json, paste("Homework 1/Raw Data/", date, "_DPH_covid.json", sep = ""))
 
-# Run on April 12, 2020. 
+
+
+# Run on April 14, 2020. 
