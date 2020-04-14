@@ -15,21 +15,6 @@ library(textclean)
 # to reproduce my results can be granted here: https://api.census.gov/data/key_signup.html
 library(tidycensus)
 
-# Hospital data
-# https://hifld-geoplatform.opendata.arcgis.com/datasets/6ac5e325468c4cb9b905f1728d6fbf0f_0?selectedAttribute=BEDS
-# https://www.chicagobusiness.com/static/section/hospital-beds-database.html
-
-# mobility data
-#https://www.google.com/covid19/mobility/
-#https://github.com/vitorbaptista/google-covid19-mobility-reports
-#https://ai.googleblog.com/2019/11/new-insights-into-human-mobility-with.html
-#https://www.nature.com/articles/s41467-019-12809-y
-
-# date implemented social distancing in each county maybe?
-# https://www.finra.org/rules-guidance/key-topics/covid-19/shelter-in-place
-
-
-
 NYT <-read_csv(curl("https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"))
 
 dph_json <- read_lines(curl("https://www.dph.illinois.gov/sitefiles/COVIDHistoricalTestResults.json"))
@@ -61,13 +46,14 @@ NYT_counties <- NYT %>%
 covid <- full_join(NYT_counties, dph) %>%
   arrange(-desc(date)) %>%
   group_by(county) %>%
-  arrange(-desc(county)) %>% 
-  mutate(delta_cases = if_else(is.na(lag(county)) | county != lag(county), 0, as.double(cases - lag(cases)))) %>%
-  mutate(delta_deaths = if_else(is.na(lag(county)) | county != lag(county), 0, as.double(deaths - lag(deaths)))) %>%
-  mutate(cases_rate = if_else(is.na(lag(county)) | county != lag(county), 0, as.double(log(cases/lag(cases))))) %>%
-  mutate(deaths_rate = if_else(is.na(lag(county)) | county != lag(county), 0, as.double(log(deaths/lag(deaths))))) %>%
-  mutate(days_since_first_case = date - ymd("2020-01-24")) %>%
-  mutate(days_since_sheltering = date - mdy("3/20/2020")) 
+  arrange(-desc(county)) #%>% 
+  # mutate(delta_cases = if_else(is.na(lag(county)) | county != lag(county), 0, as.double(cases - lag(cases)))) %>%
+  # mutate(delta_deaths = if_else(is.na(lag(county)) | county != lag(county), 0, as.double(deaths - lag(deaths)))) %>%
+  # mutate(cases_rate = if_else(is.na(lag(county)) | county != lag(county), 0, as.double(delta_cases/lag(delta_cases)))) %>%
+  # mutate(deaths_rate = if_else(is.na(lag(county)) | county != lag(county), 0, as.double(delta_deaths/lag(delta_deaths)))) %>%
+  # mutate(days_since_first_case = date - ymd("2020-01-24")) %>%
+  # mutate(days_since_first_death = date - ymd("2020-03-17")) %>%
+  # mutate(days_since_sheltering = date - mdy("3/20/2020")) 
 
 demos_full <- get_acs(geography = "county", 
                                variables = c(`population-` = "B01003_001",
