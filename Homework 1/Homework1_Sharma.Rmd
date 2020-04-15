@@ -1,7 +1,7 @@
 ---
 title: "Homework 1: Estimating Covid-19 Deaths"
 author: "Neeraj Sharma"
-date: "4/7/2020"
+date: "4/14/2020"
 output: pdf_document
 ---
 
@@ -29,7 +29,7 @@ To fulfill that request, you will need to assemble a data set, do estimation bas
 
 In December 2019, scientists in China reported the discovery of a novel coronavirus originating from a wild seafood and exotic animal market in the city of Wuhan, Hubei Provence, China. Over the subsequent months, the virus spread over the world, infecting individuals on all populated continents and in nearly every country.^[https://www.nytimes.com/article/coronavirus-timeline.html]  The assignment given is to provide a prediction of deaths that might occur by April 21 and by May 31 in the state of Illinois for consideration by JB Pritzker.
 
-```{r Loading Packages, message=FALSE}
+```{r Loading Packages, include = FALSE}
 library(tidyverse)
 library(readr)
 library(modelr)
@@ -43,12 +43,12 @@ library(tsibble)
 
 ## Describe the data set that you chose to assemble and the rationale behind the choices you made in deciding what data to use.
 
-My dataset pulls together data from four sources spread across three general categories. The categories I analyze are:
+My dataset pulls together data from fice sources spread across four general categories. The categories I analyze are:
 
-1. COVID
+1. COVID data
    i. January 24, 2020 to March 16, 2020 -- Data on cases and deaths as reported by the [New York Times](https://github.com/nytimes/covid-19-data)
    i. March 17, 2020 and onwards -- Data on cases, deaths, tested, and negative results from the [Illinois Department of Public Health](https://www.dph.illinois.gov/covid19/covid19-statistics)
-1. Demographics
+1. Demographics of IL
    i. County-level demographic data pulled from the 2018 5-year Census American Community Survery
       a) Population
       a) Population under 18
@@ -58,14 +58,22 @@ My dataset pulls together data from four sources spread across three general cat
       a) Number of Households with people under 18
       a) Number of Households with people over 60
       a) Number of Overcrowded Households
-1. Hospitals
+1. Hospital information in IL
    i. County-level capacity, load and utilization data aggregated to the county level from the [Illinois Health Facilities and Services Review Board](https://www2.illinois.gov/sites/hfsrb/InventoriesData/FacilityProfiles/Pages/default.aspx)
-1. Mobility
-   i. Median distance traveled by cellphone pings. 
+1. Mobility data recorded in IL
+   i. County level data about average mileage traveled by cellphones recorded by cell-tower pings aggregated to state level from [Descartes Labs](https://github.com/descarteslabs/DL-COVID-19)
    
-This super complicated dataset ended up being way too overcomplicated and sort of a waste of time. The demographic data was nice to have for sorting and exploration, but served little to no purpose in building my models as I did not end up comparing Illinois to any other state. 
+I began with the mindset that I should attempt to collect as much data as possible and form a model out of what I observe. I realized that this led me down overcomplicated paths and wasted my time. I retained some of this data for several reasons: 
 
-```{r Building Cases Dataset, message=FALSE, warning=FALSE}
+First, I chose my sources of COVID data by first extracting the JSON from the Illinois Department of Health website. I figured that the IL DPH would be the most authoritative and accurate source for my data as it has minimal aggregation which causes loss in resolution. To get data prior to early March, I sourced from the New York Times. I first considered sourcing from the Johns Hopkins CSSE dataset, but found there to be moderate discrepancies in Illinois data specifically. 
+
+Secondly, I origially wanted to extract demographic data for Illinois to compare to other states like New York or California, but after doing exploratory analysis, I found that route to be too limited. The variables I selected (noted above), I chose because of the qualities and characteristics of the Coronavirus. I specifically was interested in metrics relevant to the elderly population, school age children, and home overcrowding as those metrics are repeadidly discussed in the context of COVID. Unfortunately, it was difficult to find a reasonable match for Illinois at the state level so I opted to compare against other countries. 
+
+Third, I got information on hospitals in Illinois to identify the number of ICU and general available beds to determine when the state would be overwhelmed with patients. 
+
+Finally, I extracted mobility data to attempt to factor in the impact of social distancing. 
+
+```{r Building Cases Dataset, include = FALSE}
 # Pulls in dataset produced by dataset_creat.R
 full <- read_csv("20200414_combined_covid_demos_hosp_mobility.csv") %>%
   mutate(per_capita_deaths = deaths/`population-E`, 
@@ -91,54 +99,87 @@ full <- read_csv("20200414_combined_covid_demos_hosp_mobility.csv") %>%
 
 ## Describe the model(s) that you settled on for estimation. What was your logic for using that/those particular models?
 
-The model I ultimately settled on relates the log of deaths at a given time to the number of cases at that time, the date, a colinearly-related social distancing binary variable and median mobility, and a binary variable indicating if the hospital ICU cap has been reached yet. I settled on this model as I believe it accurately captures an important behavioral change that occured part-ways through the COVID pandemic that is difficult to account for while also including for an important motivator behind deaths in certain instances. Accounting for social distancing and the corresponding mobility reduction through including them as colinearly-related variables is justified as mobility remains relatively steady depending on if social distancing is in place or not. Including these variables in my model is a straightforward, simple way to account for the effect social distancing has on deaths. I choose to include data on cases and if the ICU cap has been reached yet as those independently impact the death rate of infected patients. As cases increase, deaths will naturally increase as well. However, they will accelerate more dramatically once the ICU cap has been reached as hospitals will be unable to devote the resources necessary to meet the needs of each individual patient.
+I build two models: one for high population counties in Illinois and another for low population counties in Illinois. I chose to split the state up in this way because the spread of viruses in urban centers differs dramatically from in rural areas. Thus, I wanted to define two models to account for this difference. 
 
-In order to turn my regression into a predictive model I needed to feed the model data for the future in order to estimate deaths on April 21 and the end of May. The most complicated variable to predict data for is the cases, as that essentially is another recreation of this project as a whole. I approach this question in a simplified manner. First, I identify countries with similar demographic and growth curves to Illinois and base the future cases in Illinois on the progression of cases I observe in those other countries.  Once the cases data has been created, creating dummy data for the socialdistancing? binary variable, date, and at_icu_cap is relatively straightforward as social distancing will continue to remain in place, the date is known, and the ICU cap is dependent on cases which I have just explained my predictive model for.
+The model I ultimately settled on for higher population areas relates the deaths at a given time to the number of cases at that time, the date and a co-linearly-related social distancing binary variable, and a binary variable indicating if the hospital ICU cap has been reached yet. I chose this model for high population areas as I believe it captures the impact of social distancing independent from normal progressions in time relatively well. Social distancing is an important behavioral change as is decreases the transmission rate of the virus, so its implementation, or a lack thereof, is an important motivator behind deaths once cases begin to trend upwards exponentially. Distancing occurs part-ways through the COVID pandemic and disproportionately affects high population areas. Accounting for social distancing and the date through including them as co linearly-related variables is justified as movement is dependent on if social distancing is in place or not. Including these variables in my model is a straightforward, yet simple way to account for the effect social distancing has on deaths. I choose to include data on cases and if the ICU cap has been reached yet as those each impact the death rate of infected patients. As cases increase, deaths will naturally increase as well. However, they will accelerate more dramatically once the ICU cap has been reached as hospitals will be unable to devote the resources necessary to meet the needs of each individual patient.
 
+For low population areas, I identify a linear trend that I extrapolate outwards. If there will be any significant death, it will occur in population centers like Cook County or East Saint Louis. This linear trend is sufficient for the small number of deaths it accounts for. 
 
+```{r include = FALSE}
+global_cases_raw <- read_csv("Raw Data/20200414_JHUcases_global.csv") 
+global_deaths_raw <- read_csv("Raw Data/20200414_JHUdeaths_global.csv")
 
-```{r}
-# highpop <- c("Cook", "DuPage","Lake", "Will", "Kane", "McHenry", "Winnebago", 
-#              "Madison", "St. Clair", "Champaign", "Sangamon", "Peoria", "McLean", 
-#              "Rock Island", "Tazewell", "Kankakee", "LaSalle", "Macon", "DeKalb")
-# 
-# apr_highpop <- full %>%
-#   select(date, county, cases, deaths, delta_cases, delta_deaths, cases_rate, 
-#          deaths_rate, days_since_first_case, days_since_first_death, days_since_sheltering,
-#          `num_hh-E`, `num_hh_morethan1_person_perroom-E`, bedsIntensiveCare, 
-#          bedsTotalCONAuthorizedBeds, location_samples, m50, `socialdistancing?`, overcrowding, at_icu_cap, 
-#          at_hospital_cap) %>%
-#   filter(deaths != 0, county %in% highpop) %>%
-#   group_by(date)
-#   as_tsibble(index = date, key = county)
-# 
-# lm.weight.function <- function(x) {10 / (1 + exp(-x))}
-# lm.weights <- lapply(seq(-13, 14, length.out = 28), lm.weight.function)
-# 
-# 
-# regres1 <- model(apr_highpop %>% index_by(date) %>% summarize(deaths = sum(deaths)), lm = ETS(log(deaths) ~ error("A") + trend("N") + season("M")))
-# regres2 <- model(apr_highpop %>% filter(!(is.na(m50))), lm = TSLM(log(deaths) ~ cases + `socialdistancing?`*date + m50 + at_icu_cap)) 
-# 
-# forecast_newdata <- tibble(date = seq(ymd("2020-04-15"), ymd("2020-05-31"), by = "1 day"))
-#   #tibble(date = seq(ymd("2020-04-15"), ymd("2020-05-31"), by = "1 day"), `socialdistancing?` = rep(1,47))
-# 
-# forecast_lowpop <- augment(regres2) %>% forecast(forecast_newdata) %>% fortify(level = 80)
-# 
-# #regres3 <- lm(log(deaths) ~ date, apr_highpop %>% as_tibble() %>% group_by(date) %>% summarize(deaths = sum(deaths)), weights = unlist(lm.weights))
-# #regres4 <- lm(log(deaths) ~ date, apr_highpop %>% as_tibble() %>% group_by(date) %>% summarize(deaths = sum(deaths)))
-# # going forward to plug new_data into forecast, date is just date, socialdistancing? is 1, m50 will be linear trend, at_icu_cap will depend on cases. Cases will be done by estimating future cases by a country that closely parallels IL. I think i will likely be using Switzerland. I will estimate delta_deaths either linearly onwards or I will be removing it entirely from my model at this time. 
-# 
-# regres2 %>% filter(county == "Cook") %>% report()
-# ggplot(augment(regres2), aes(x = date, group = county)) +
-#   geom_line(aes(y = deaths, color = "Deaths")) +
-#   geom_line(aes(y = .fitted, color = "Fitted from Model"))
-```
-
-```{r}
 highpop <- c("Cook", "DuPage","Lake", "Will", "Kane", "McHenry", "Winnebago", 
              "Madison", "St. Clair", "Champaign", "Sangamon", "Peoria", "McLean", 
              "Rock Island", "Tazewell", "Kankakee", "LaSalle", "Macon", "DeKalb")
 
+first_reported_cases <- global_cases_raw %>%
+  select(-`Province/State`, -Lat, -Long) %>%
+  pivot_longer(-`Country/Region`, names_to = "date", values_to = "cases") %>% 
+  mutate(first_case_date = as.Date(date, "%m/%d/%y")) %>%
+  group_by(first_case_date, `Country/Region`) %>% 
+  summarize(cases = sum(cases)) %>%
+  arrange(-desc(`Country/Region`)) %>%
+  ungroup() %>%
+  filter((cases != 0 & lag(cases) == 0 & cases <= lead(cases)) | (first_case_date == as.Date("2020-01-22") & cases > 0)) %>%
+  select(-cases, country = `Country/Region`)
+
+il <- full %>%
+  filter(county %in% highpop) %>%
+  select(date, cases, deaths, delta_cases, delta_deaths, `socialdistancing?`) %>%
+  group_by(date, `socialdistancing?`) %>%
+  summarize(deaths = sum(deaths), cases = sum(cases)) %>%
+  ungroup() %>%
+  filter(cases != 0) %>%
+  select(-`socialdistancing?`) %>%
+  pivot_longer(-date, names_to = "var", values_to = "count")  %>%
+  mutate(day = as.double(date - ymd("2020-02-29"))) %>%
+  filter(day >= 0)
+```
+
+
+```{r include = FALSE}
+country <- c("Brazil", "Netherlands")
+# Growth curves for Germany, France, Iran(debatable), Italy, Korea, South, Spain are too steep
+
+versus <- left_join(global_cases_raw %>%
+                      filter(`Country/Region` %in% country) %>%
+                      select(-`Province/State`, -Lat, -Long) %>%
+                      pivot_longer(-`Country/Region`, names_to = "date", values_to = "cases") %>% 
+                      group_by(`Country/Region`, date) %>% 
+                      summarize(cases = sum(cases)), 
+                    global_deaths_raw %>%
+                      filter(`Country/Region` %in% country) %>%
+                      select(-`Province/State`, -Lat, -Long) %>%
+                      pivot_longer(-`Country/Region`, names_to = "date", values_to = "deaths") %>% 
+                      group_by(`Country/Region`, date) %>% 
+                      summarize(deaths = sum(deaths))) %>%
+  filter(cases != 0) %>%
+  pivot_longer(-c(`Country/Region`, date), names_to = "var", values_to = "count") %>%
+  mutate(date = as.Date(date, "%m/%d/%y")) %>%
+  left_join(first_reported_cases, by = c("Country/Region" = "country")) %>%
+  mutate(day = as.double(date - first_case_date)) %>%
+  rename(countries = `Country/Region`) %>%
+  group_by(countries, date, var, day) %>%
+  summarize(count = sum(count))
+
+
+model_cases <- nls(count ~ SSlogis(day, Asym, xmid, scal), bind_rows(il %>% filter(var == "cases") %>% mutate(countries = "IL"), versus %>% filter(var == "cases")))
+forecast_cases <- model_cases %>% predict(newdata = tibble(day = seq(0,92)))
+full_cases_predic <- right_join(il %>% 
+                                  filter(var == "cases") %>% 
+                                  pivot_wider(names_from = "var", values_from = "count"), 
+                                bind_cols(tibble(forecast_cases), tibble(date = seq(ymd("2020-02-29"), ymd("2020-05-31"), by = "1 day")))) %>%
+  mutate(day = seq(0,92))
+
+ggplot(full_cases_predic, mapping = aes(x = day)) +
+  geom_point(versus %>% filter(var == "cases"), mapping = aes(y = count, group = countries, color = countries), size = 0.7) +
+  geom_line(full_cases_predic, mapping = aes(y = forecast_cases, color = "Fitted + Prediction"), size = 0.5) +
+  geom_line(il %>% filter(var == "cases"), mapping = aes(x = day, y = count, color = "Illinois"), size = 2)
+
+```
+
+```{r include = FALSE}
 apr_highpop_experiment <- full %>%
   select(date, county, cases, deaths, delta_cases, delta_deaths, cases_rate, 
          deaths_rate, days_since_first_case, days_since_first_death, days_since_sheltering,
@@ -147,25 +188,32 @@ apr_highpop_experiment <- full %>%
          at_hospital_cap) %>%
   filter(deaths != 0, county %in% highpop) %>%
   group_by(date) %>%
-  summarize(cases = sum(cases), deaths = sum(deaths), mean_m50 = mean(m50, na.rm = TRUE), bedsICU = sum(bedsIntensiveCare), icucap = mean(at_icu_cap)) %>%
+  summarize(cases = sum(cases), deaths = sum(deaths), mean_m50 = mean(m50, na.rm = TRUE), bedsICU = sum(bedsIntensiveCare), icu_cap = mean(at_icu_cap)) %>%
   mutate(at_icu_cap = if_else(cases > bedsICU, 1, 0), 
          `socialdistancing?` = if_else(date > as.Date("2020-03-20"), 1, 0)) %>%
   as_tsibble(index = date)
 
-regres2_experiment <- model(apr_highpop_experiment %>% filter(!(is.na(mean_m50))), lm = TSLM(log(deaths) ~ cases + `socialdistancing?`*date  + icucap))
+regres2_experiment <- model(apr_highpop_experiment, lm = TSLM(deaths ~ cases + `socialdistancing?`*date  + icu_cap))
 
-forecast_newdata <- tibble(date = seq(ymd("2020-04-15"), ymd("2020-05-31"), by = "1 day"), `socialdistancing?` = rep(1,47))
 
-forecast_highpop <- regres2_experiment %>% forecast(forecast_newdata) %>% fortify(level = 80)
+forecast_newdata <- tibble(date = seq(ymd("2020-04-15"), ymd("2020-05-31"), by = "1 day"), `socialdistancing?` = rep(1,47)) %>%
+  left_join(full_cases_predic) %>%
+  select(-cases, cases = forecast_cases) %>%
+  mutate(bedsICU = 3182, icu_cap = if_else(cases > bedsICU, 1, 0)) %>%
+  as_tsibble(index = date)
 
+forecast_highpop <- regres2_experiment %>% forecast(new_data = forecast_newdata) %>% fortify(level = 80)
 
 regres2_experiment %>% report()
 ggplot(augment(regres2_experiment), aes(x = date)) +
   geom_line(aes(y = deaths, color = "Deaths")) +
-  geom_line(aes(y = .fitted, color = "Fitted from Model"))
+  geom_line(aes(y = .fitted, color = "Fitted from Model")) +
+  geom_line(forecast_highpop, mapping = aes(x = date, y = deaths)) +
+  geom_ribbon(forecast_highpop, mapping = aes(x = date, ymin = .lower, ymax = .upper), alpha = 0.3) +
+  xlim(as.Date("2020-03-17"), as.Date("2020-04-21"))
 ```
 
-```{r}
+```{r include = FALSE}
 apr_lowpop <- full %>%
   select(date, county, cases, deaths, delta_cases, delta_deaths, cases_rate, 
          deaths_rate, days_since_first_case, days_since_first_death, days_since_sheltering,
@@ -191,90 +239,53 @@ ggplot() +
   scale_color_manual(values = c("Black", "Blue", "Red"))
 ```
 
-```{r message = FALSE}
-global_cases_raw <- read_csv("Raw Data/20200414_JHUcases_global.csv") 
-global_deaths_raw <- read_csv("Raw Data/20200414_JHUdeaths_global.csv")
+```{r include = FALSE}
+forecast_total <- left_join(forecast_highpop %>% select(date, hpop_deaths = deaths, hpop_lower = .lower, hpop_upper = .upper),
+                            forecast_lowpop %>% select(date, lpop_deaths = deaths, lpop_lower = .lower, lpop_upper = .upper)) %>%
+  mutate(deaths = hpop_deaths + lpop_deaths, upper = hpop_upper + lpop_upper, lower = hpop_lower + lpop_lower)
 
-first_reported_cases <- global_cases_raw %>%
-  select(-`Province/State`, -Lat, -Long) %>%
-  pivot_longer(-`Country/Region`, names_to = "date", values_to = "cases") %>% 
-  mutate(first_case_date = as.Date(date, "%m/%d/%y")) %>%
-  group_by(first_case_date, `Country/Region`) %>% 
-  summarize(cases = sum(cases)) %>%
-  arrange(-desc(`Country/Region`)) %>%
-  ungroup() %>%
-  filter((cases != 0 & lag(cases) == 0 & cases <= lead(cases)) | (first_case_date == as.Date("2020-01-22") & cases > 0)) %>%
-  select(-cases, country = `Country/Region`)
-
-il <- full %>%
-  filter(county %in% highpop) %>%
-  select(date, cases, deaths, delta_cases, delta_deaths, `socialdistancing?`) %>%
-  group_by(date, `socialdistancing?`) %>%
-  summarize(deaths = sum(deaths), cases = sum(cases)) %>%
-  ungroup() %>%
-  filter(cases != 0) %>%
-  select(-`socialdistancing?`) %>%
-  pivot_longer(-date, names_to = "var", values_to = "count")  %>%
-  mutate(day = as.double(date - ymd("2020-02-29"))) %>%
-  filter(day > 0)
+forecast_total %>% filter(date == ymd("2020-04-21")) %>% select(deaths) %>% magrittr::extract(1)
+max(forecast_total$hpop_deaths) + max(forecast_total$lpop_deaths)
 ```
 
+## Provide an exact number which is your prediction for cumulative official Illinois Covid deaths through April 21
 
-```{r message = FALSE}
-country <- c("Brazil", "Netherlands", "Switzerland")
-# Growth curves for Germany, France, Iran(debatable), Italy, Korea, South, Spain are too steep
+I predict that there will be 1099 deaths through April 21. 
 
-versus <- left_join(global_cases_raw %>%
-                      filter(`Country/Region` %in% country) %>%
-                      select(-`Province/State`, -Lat, -Long) %>%
-                      pivot_longer(-`Country/Region`, names_to = "date", values_to = "cases") %>% 
-                      group_by(`Country/Region`, date) %>% 
-                      summarize(cases = sum(cases)), 
-                    global_deaths_raw %>%
-                      filter(`Country/Region` %in% country) %>%
-                      select(-`Province/State`, -Lat, -Long) %>%
-                      pivot_longer(-`Country/Region`, names_to = "date", values_to = "deaths") %>% 
-                      group_by(`Country/Region`, date) %>% 
-                      summarize(deaths = sum(deaths))) %>%
-  filter(cases != 0) %>%
-  pivot_longer(-c(`Country/Region`, date), names_to = "var", values_to = "count") %>%
-  mutate(date = as.Date(date, "%m/%d/%y")) %>%
-  left_join(first_reported_cases, by = c("Country/Region" = "country")) %>%
-  mutate(day = as.double(date - first_case_date)) %>%
-  rename(countries = `Country/Region`) %>%
-  group_by(countries, date, var, day) %>%
-  summarize(count = sum(count))
+## Provide an exact number which is your prediction for cumulative official Illinois Covid deaths through May 31
 
-model_cases <- nls(count ~ SSlogis(day, Asym, xmid, scal), versus %>% filter(var == "cases"))
-forecast_cases <- model_cases %>% predict(newdata = tibble(day = seq(0,92)))
+I predict that there will be 1183 deaths through May 31. 
 
-ggplot(augment(model_cases), mapping = aes(x = day)) +
-  geom_point(aes(y = count, color = "Count")) +
-  geom_point(aes(y = .fitted, color = "Fitted")) +
-  geom_line(il %>% filter(var == "cases"), mapping = aes(x = day, y = count, color = "Illinois"), size = .75)
+## How did you get from the estimates in (2) to the predictions in (3) and (4)?
 
+In order to turn my high population regression into a predictive model I needed to feed the model data for the future in order to estimate deaths on April 21 and the end of May. The most complicated variable to predict data for is the cases, as that essentially is another recreation of this project as a whole. I approach this question in a simplified manner. First, I identify countries with similar demographic and growth curves to Illinois and base the future cases in Illinois on the progression of cases I observe in those other countries. I use a logisic model to estimate those curves using the method of non-linear squares to fit the data. I then use the equation produced by the logistic model to estimate the future progression of cases in Illinois. Once the cases data has been created, creating dummy data for the socialdistancing? binary variable, date, and at_icu_cap is relatively straightforward as social distancing will continue to remain in place, the date is known, and the ICU cap is dependent on cases which I have just explained my predictive model for. 
 
-ggplot() +
-  geom_line(versus %>% filter(var == "cases"), mapping = aes(x = day, y = count, group = interaction(countries, var), color = countries), alpha = 0.4) +
-  geom_point(versus %>% filter(day %% 4 == 2, var == "cases"), mapping = aes(x = day, y = count, group = interaction(countries, var), color = countries, shape = var), alpha = 0.4) +
-  geom_line(il %>% filter(var == "cases"), mapping = aes(x = day, y = count, group = var, color = "Illinois"), size = .75) +
-  geom_point(il %>% filter(day %% 4 == 0, var == "cases"), mapping = aes(x = day, y = count, group = var, color = "Illinois", shape = var), size = 2) +
-  scale_y_continuous(labels = scales::comma) +
-  labs(title = "Cases in IL vs other countries")
+I then re-run my regression with the extended dataset based on my predicted estimates for cases, date, socialdistancing?, and ICU capacity to identify what the deaths on April 21 and May 31 will be. My model eventually trends downwards as my dummy data for cases eventually remains constant given the logistic fitting I use to project cases. Thus, for May 31, I identify the maximum number of deaths that occured in my model and pull that number forward. 
 
-# geom_line(apr_highpop_forecast, mapping = aes(x = day, y = deaths, color = "prediction"))
+## Provide an exact number of your best guess of the 90-10 confidence interval for your estimates in questions 3 and 4 (those confidence intervals obviously can be different from one another). A 90-10 confidence interval is the range that would encompass the true value 80 percent of the time. I don't want you necessarily to provide the standard error churned out by the computer, but something more thoughtful. Discuss the thought process/rationale underlying the standard errors you choose.
 
+The computer tells me that the 90-10 prediction interval (+, -) for April 21 is (1128.7505, 1068.7173), and that the 90-10 prediction interval (+, -) for May 31 is (1,224.14027, 1,140.3893). That's 100% not true and my model is significantly less accurate than that. I think that the error is more likely closer to (1300, 1000) for April 21 and (1700, 1200) for May 31. The reason I believe this is that my model for estimating the total number of cases has an increasingly smaller standard deviation as the model continues on as the logistic curve flattens. This is not an accurate representation of reality. Because my model underestimates the standard deviation, the standard error and prediction interval becomes more fixed as the date approachs May 31. In reality, the model should include have increasing uncertainty as time progresses, and have a higher bound on the confidence interval than my model reports. 
 
-ggplot() +
-  geom_line(versus %>% filter(var == "cases"), mapping = aes(x = day, y = count, group = interaction(countries, var), color = countries), alpha = 0.4) +
-  geom_smooth(versus %>% filter(var == "cases"), method = "loess", mapping = aes(x = day, y = count), alpha = 0.4, level = 0.8) +
-  geom_line(il %>% filter(var == "cases"), mapping = aes(x = day, y = count, color = "Illinois"), size = .75) +
-  xlim(0, 51)
+It's impossible for me to select a defined set of errors to square and include in this model because of the limitations of my prediction methodology. In the future, I will keep this in mind. 
 
+## Make exactly one pretty picture/graph/slide that you would show to the Governor to allow him to easily understand what he should be expecting in terms of Covid deaths.
+
+```{r echo = TRUE}
+il_final <- il  %>%
+  filter(var == "deaths") %>%
+  pivot_wider(names_from = "var", values_from = "count") %>%
+  bind_rows(forecast_total %>% 
+              mutate(hpop_deaths = if_else(date > ymd("2020-04-26"), 1140.1446, hpop_deaths)) %>%
+              mutate(hpop_upper = if_else(date > ymd("2020-04-26"), 1143.8320, hpop_upper)) %>%
+              mutate(hpop_lower = if_else(date > ymd("2020-04-26"), 1067.0260, hpop_lower)) %>%
+  select(-deaths, -upper, -lower) %>%
+  mutate(deaths = hpop_deaths + lpop_deaths, upper = hpop_upper + lpop_upper, lower = hpop_lower + lpop_lower)) %>%
+  select(date, deaths, upper, lower)
+
+ggplot(il_final, mapping = aes(x = date)) +
+  geom_line(il_final %>% slice(1:45), mapping = aes(y = deaths, color = "Deaths to Date")) +
+  geom_ribbon(il_final %>% slice(46:92), mapping = aes(ymin = lower, ymax=upper, fill = "Projected Deaths"), alpha = 0.3) +
+  geom_line(il_final %>% slice(46:92), mapping = aes(y = deaths, color = "Projected Deaths")) +
+  labs(title = "Current and Projected COVID deaths through May 31", x = "Date", y = "Number of Deaths")
 ```
 
-A Chicago resident contracted the first confirmed case of COVID-19 in Illinois. The Chicago case was announced Jan. 24, and the first cases outside of Chicago and Cook County were reported March 11, in Kane and McHenry counties. Governor Pritzker issued a disaster proclamation on March 9, which provides the state access to federal and state resources to mitigate the spread of COVID-19. 
-
-On Jan 24, IL had it's first COVID patients. Those two inviduals had literally recovered by the time another patient was diognosed in IL. I remove the days that there were those two random early stage cases and instead start my day 0 for Illinois on Feburary 29, 2020. On Feburary 29, 2020, the first COVID patient in IL not affiliated with the two early cases was diognosed.^[https://wgntv.com/news/illinois-health-officials-announce-new-case-of-coronavirus/] I count that as the real first COVID case in IL and thus make it in the initial start date for IL. 
-
-Additionally, I also move Russia's curve to begin on March 2, 2020. Prior to that date, the only cases in Russia were Chinese Nationals who had recently entered Russia from China and eight Russians from the Diamond Princess Cruise Ship who were immediatly quarentined. All these individuals recovered prior to another case appearing in Russia. On March 2nd, a man was diognosed with COVID after vacationing in Italy, so I mark that as the first Russian COVID case.  
