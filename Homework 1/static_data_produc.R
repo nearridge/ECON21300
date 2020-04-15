@@ -9,6 +9,8 @@ library(jsonlite)
 # Downloads raw data from CSSE github repo. It is updated daily. 
 cases_raw <- read_csv(curl("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_US.csv"))
 deaths_raw <- read_csv(curl("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_US.csv"))
+global_cases_raw <- read_csv(curl("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_confirmed_global.csv")) 
+global_deaths_raw <- read_csv(curl("https://raw.githubusercontent.com/CSSEGISandData/COVID-19/master/csse_covid_19_data/csse_covid_19_time_series/time_series_covid19_deaths_global.csv"))
 
 # Downloads raw data from NYT github repo. It is updated daily. 
 NYT <-read_csv(curl("https://raw.githubusercontent.com/nytimes/covid-19-data/master/us-counties.csv"))
@@ -44,9 +46,11 @@ date <- Sys.Date() %>%
 # Write static files
 write_csv(cases_raw, paste("Homework 1/Raw Data/", date, "_JHUcases_US.csv", sep = ""), na = "NA", col_names = TRUE)
 write_csv(deaths_raw, paste("Homework 1/Raw Data/", date, "_JHUdeaths_US.csv", sep = ""), na = "NA", col_names = TRUE)
+write_csv(global_cases_raw, paste("Homework 1/Raw Data/", date, "_JHUcases_global.csv", sep = ""), na = "NA", col_names = TRUE)
+write_csv(global_deaths_raw, paste("Homework 1/Raw Data/", date, "_JHUdeaths_global.csv", sep = ""), na = "NA", col_names = TRUE)
 write_csv(NYT, paste("Homework 1/Raw Data/", date, "_NYT_covid_World.csv", sep = ""), na = "NA", col_names = TRUE)
 write_csv(demo_data, paste("Homework 1/Raw Data/", date, "_ACS_demographics.csv", sep = ""), na = "NA", col_names = TRUE)
-write_csv(demo_data, paste("Homework 1/Raw Data/", date, "_descartes_mobility.csv", sep = ""), na = "NA", col_names = TRUE)
+write_csv(mobility, paste("Homework 1/Raw Data/", date, "_descartes_mobility.csv", sep = ""), na = "NA", col_names = TRUE)
 write_json(dph_json, paste("Homework 1/Raw Data/", date, "_DPH_covid.json", sep = ""))
 
 
