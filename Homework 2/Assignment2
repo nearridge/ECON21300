@@ -1,0 +1,22 @@
+Problem set 2 — Econ 213
+
+Spring 2020
+
+Due May 5 at 11:59 pm
+
+ 
+
+Worried about the lack of physical activity under lockdown, Eric and Justin decided to run a randomized experiment partnering with the Hyde Park Community Center and the Woodlawn Community Center.  Eric was in charge of the Hyde Park site and Justin the Woodlawn one.  At both sites, they randomized participants into treatment and control. Treatment individuals get paid $10 for each hour they exercised. Control individuals got nothing. They were able to collect a handful of covariates, as well as the outcome variable. The study went on for three weeks, and the outcome variable recorded is the average number of hours exercised per week. 
+
+The raw data are under the "Files" tab in canvas as a CSV.
+
+Please submit two things: (1) one document with your problem set answers, and (2) a batch file with the code that goes from the raw data CSV to produce all your answers.
+
+Questions:
+
+Estimate the treatment effect and the associated standard error on the raw data given to you, assuming there are no mistakes in or problems with the data. 
+It’s always a good idea to check a data set for errors. Clean this data set as you think appropriate. As an answer to this question, note all the kinds of changes you made to the data, a few words explaining your reason for the change, and which observations you changed (noting the observation number included as a variable in the data set for identification purposes).  If it is totally obvious which observations you changed and there are a large number in the category (e.g. if you decided to drop all White study participants), you can just note what you did for that change (“I dropped all white participants”) and explain why. 
+With your cleaned data set, re-estimate the treatment effect and estimated standard error, assuming the randomization worked fine. 
+Evaluate whether the randomization appears legitimate. If you don’t think the randomization is legitimate, what is your evidence?  (Hint: something went wrong.)
+Offer your best hypothesis/hypotheses as to what went wrong with the randomization?  What evidence do you have to support your hypothesis(es)?  For each of these hypotheses, describe your best strategy for estimating a plausible treatment effect, in spite of the bad randomization. (But don’t actually estimate that treatment effect.)
+Given your answer to question five come up with your best estimate of the true treatment effect in the experiment as well as its standard error. 
