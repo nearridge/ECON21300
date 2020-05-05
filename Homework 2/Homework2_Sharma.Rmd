@@ -32,19 +32,29 @@ Here are the relevant summary statistics of the data set without any modificatio
 raw <-  read_csv("problem_set2.csv")
 
 # Create dataframe with summary statistics for hours
-unclean_data <- raw %>%
+unclean_data_summary <- raw %>%
   group_by(treatment) %>%
   summarize(count = n(), mean(hours), sd(hours), se = sd(hours)/sqrt(n()))
 
 # Kable print unclean_data
-unclean_data %>%
+unclean_data_summary %>%
   knitr::kable(col.names = c("Treatment", "Count", "Mean", "St Dev", "St Err"), 
         caption = "Summary Statistics of Hours Exercised across Sample Groups with No Data Cleaning")
 ```
 
-The mean hours exercised for individuals in the treatment group is `r unclean_data %>% extract(2, 3)` and the mean hours exercised for individuals in the non-treatment group is `r unclean_data %>% extract(1, 3)`. Assuming randomness was properly implimented in this study, the difference between these two numbers will be the Average Treatment Effect of the treatment based on the analysis I provide above. Thus, the Average Treatment Effect is `r unclean_data %>% extract(2, 3) - unclean_data %>% extract(1, 3)` with a standard error of `r round(unclean_data %>% extract(2, 5) - unclean_data %>% extract(1, 5), digits = 4)`.
+The mean hours exercised for individuals in the treatment group is `r unclean_data_summary %>% extract(2, 3)` and the mean hours exercised for individuals in the non-treatment group is `r unclean_data_summary %>% extract(1, 3)`. Assuming randomness was properly implimented in this study, the difference between these two numbers will be the Average Treatment Effect of the treatment based on the analysis I provide above. Thus, the Average Treatment Effect is `r unclean_data_summary %>% extract(2, 3) - unclean_data_summary %>% extract(1, 3)` with a standard error of `r round(unclean_data_summary %>% extract(2, 5) - unclean_data_summary %>% extract(1, 5), digits = 4)`.
 
 ## Question 2: It’s always a good idea to check a data set for errors. Clean this data set as you think appropriate. As an answer to this question, note all the kinds of changes you made to the data, a few words explaining your reason for the change, and which observations you changed (noting the observation number included as a variable in the data set for identification purposes).  If it is totally obvious which observations you changed and there are a large number in the category (e.g. if you decided to drop all White study participants), you can just note what you did for that change (“I dropped all white participants”) and explain why. 
+
+I noticed several types of data errors and compiled a representative sample of troubled observations here.
+
+```{r}
+raw %>% 
+  filter(subject_id %in% c(1, 9, 16, 26, 31, 52, 65, 100, 103)) %>%
+  kable(caption = "Representative sample of unclean observations")
+```
+
+Given these errors, I perform the following modifying operations to clean the dataset. See appendicies for the specific code I use to accomplish these modifications.
 
 ```{r}
 tibble(
@@ -65,7 +75,9 @@ tibble(
   knitr::kable()
 ```
 
-```{r echo = TRUE}
+It is clear that there are numerous outliers in terms of BMI data. Given that a BMI of less than 18.5 is underweight, having a BMI of ~1 is underweight to the point of impossibility. Thus, I believe these data points were improperly encoded and given the distribution, they appear to have simply misplaced the decimal point two places to the left.
+
+```{r}
 # Clean the data to impose uniformity upon the variable encoding.  
 clean_data <- raw %>%
   mutate(`changed?` = seq(1, 1000) * 0) %>%
@@ -119,11 +131,88 @@ clean_data <- raw %>%
 
 ## Question 3: With your cleaned data set, re-estimate the treatment effect and estimated standard error, assuming the randomization worked fine. 
 
-It is clear that there are numerous outliers in terms of BMI data. Given that a BMI of less than 18.5 is underweight, having a BMI of ~1 is underweight to the point of impossibility. Thus, I believe these data points were improperly encoded and given the distribution, they appear to have simply misplaced the decimal point two places to the left.
+```{r}
+# Create dataframe with summary statistics for hours
+clean_data_summary <- clean_data %>%
+  group_by(treatment) %>%
+  summarize(count = n(), mean(hours), sd(hours), se = sd(hours)/sqrt(n()))
 
-## Question 4:Evaluate whether the randomization appears legitimate. If you don’t think the randomization is legitimate, what is your evidence? (Hint: something went wrong.)
+# Kable print unclean_data
+clean_data_summary %>%
+  knitr::kable(col.names = c("Treatment", "Count", "Mean", "St Dev", "St Err"), 
+        caption = "Summary Statistics of Hours Exercised across Sample Groups with No Data Cleaning")
+```
 
-If there was perfect random assignment, you could randomly pluck 100 people, then pluck 100 more, their distributions should be the same of age BMI Community etc. Systematic differences imply  that it's not random. Talk about mean median and stuff but you don't need to do a t-test. 
+The mean number of hours exercised in both the treatment and control groups has fallen dramatically upon cleaning the data. Numerous entries were coded in minutes instead of hours and those observations were dragging the values up significantly. Those errors have since been corrected. Thus, the Average Treatment Effect upon cleaning the data yet assuming proper randomization is is `r clean_data_summary %>% extract(2, 3) - clean_data_summary %>% extract(1, 3)` with a standard error of `r round(clean_data_summary %>% extract(2, 5) - clean_data_summary %>% extract(1, 5), digits = 4)`.
+
+## Question 4: Evaluate whether the randomization appears legitimate. If you don’t think the randomization is legitimate, what is your evidence? (Hint: something went wrong.)
+
+An important piece of insight I gained from Eric's office hours were that given a sufficiently large sample size, perfect random assignment means by definition that one could randomly subdivide the data into equally sized groups of people and the distribution of the covariates should be the same. Thus, if I were to create histograms of some of the specified covariates in this dataset like BMI, age, race, or community, I should observe similar distributions and summary statistics to justify the representativeness and randomness of the allocation of the sample groups. Eric noted that on this problem set specifically is straightforward enough with regards to the identification of systematic differences that imply a non-random allocation that full t-test would not be necessary.
+
+```{r}
+randomness <- clean_data %>%
+  mutate(treatment = factor(treatment, labels = c("No Treatment ($0)", "Treatment ($10)"))) %>%
+  mutate(race_ethnicity = factor(race_ethnicity, c("Black", "Hispanic", "White"))) %>%
+  mutate(community_center = factor(community_center, labels = c("Woodlawn", "Hyde Park"))) %>%
+  mutate(education = factor(education,levels = c("less than high school", "high school", "higher degree")))
+
+randomness %>% 
+  select(treatment, community_center) %>% 
+  group_by(community_center, treatment) %>% 
+  count() %>%
+ggplot(mapping = aes(x = community_center, y = n, label = n)) +
+  geom_col(fill = "#0090d3", color = "black") +
+  geom_text(nudge_y = -15, fontface = "bold", color = "White") +
+  labs(x = "Community Center", y = "Count", title = "Treatment by Location") +
+  theme_economist() +
+  scale_fill_economist() +
+  facet_wrap(~ treatment)
+```
+
+This plot clearly shows a bias in the group allocations based on survey site. Were this data to be randomly created, we would expect to see an even distribution of individuals in the treatment and non-treatment groups across Woodlawn and Hyde Park. Instead, we find a disproportionate amount of the control group was assigned at Hyde Park and conversely, a disproportionate number of people in the treatment group were assigned in Woodlawn. A random experiment would not exhibit this property.
+
+Further analysis on other covariates supports the conclusion that race is not controlled between treatment groups. 
+
+```{r}
+randomness %>%
+  group_by(community_center, treatment, race_ethnicity) %>%
+  drop_na(race_ethnicity) %>%
+  count() %>%
+  ggplot(mapping = aes(x = fct_reorder(race_ethnicity, -n), y = n, fill = community_center, label = n)) +
+  geom_col(position = "stack", color = "black") +
+  geom_text(position = "stack", vjust = 1.2, fontface = "bold", color = "white") +
+  theme_economist() +
+  theme(legend.position = "bottom") +
+  scale_fill_economist(name = "Community Center") +
+  labs(x = "Race/Ethnicity", y = "Count", title = "Treatment by Location and Race") +
+  facet_wrap(~ treatment)
+
+# theme(legend.position = "bottom", legend.key.height = unit(0.2, "cm"), legend.key.width = unit(0.3, "cm"), legend.box.spacing = unit(0.01, "cm")) +
+```
+
+In general, plots of most other covariates look fairly decently normal. For brevity, I only provide summary statistics to articulate this point:
+
+```{r}
+randomness %>% 
+  group_by(treatment) %>% 
+  summarize(`Mean Female` = mean(female, na.rm = TRUE), 
+            `Sd Dev Female` = sd(female, na.rm = TRUE),
+            `Mean Age` = mean(age, na.rm = TRUE), 
+            `Sd Dev Age` = sd(age, na.rm = TRUE), 
+            `Mean BMI` = mean(bmi, na.rm = TRUE), 
+            `Sd Dev BMI` = sd(bmi, na.rm = TRUE))
+
+randomness %>%
+  group_by(treatment, education) %>%
+  summarize(count = n()) %>%
+  pivot_wider(treatment, names_from = education, values_from = count)
+
+randomness %>%
+  group_by(treatment, race_ethnicity) %>%
+  summarize(count = n()) %>%
+  pivot_wider(treatment, names_from = race_ethnicity, values_from = count) 
+
+```
 
 How to tell if you aren't random. Clues that it is the case is done through a balance table. Compare means of each observable metric between treatment and control groups. You do a t-test to compare them. THIS IS NOT GREAT, but still do it to confirm you are balanced on your observables. 
 
@@ -149,9 +238,6 @@ clean_data %>%
 ```
 
 ```{r}
-randomness <- clean_data %>%
-  mutate(treatment = factor(treatment, labels = c("No Treatment ($0)", "Treatment ($10)")))
-
 randomness %>%
   drop_na(bmi) %>%
 ggplot(mapping = aes(x = bmi)) +
@@ -160,11 +246,7 @@ ggplot(mapping = aes(x = bmi)) +
   theme_economist() +
   facet_wrap(~ treatment)
 
-randomness %>%
-  drop_na(bmi) %>%
-  group_by(treatment) %>%
-  summarize(count = n(), mean(bmi), sd(bmi), se = sd(bmi)/sqrt(n())) %>%
-  kable(col.names = c("Treatment", "Count", "Mean", "St Dev", "St Err"), caption = "Summary Statistics of BMI across Sample Groups")
+
 
 
 randomness %>%
@@ -172,13 +254,6 @@ randomness %>%
 ggplot(mapping = aes(x = age)) +
   geom_histogram(fill = "#3a89cf", color = "black", bins = 15) +
   labs(x = "Age", y = "Count", title = "Histogram of distribution of Age between treatment groups") +
-  theme_economist() +
-  facet_wrap(~ treatment)
-
-randomness %>%
-ggplot(mapping = aes(x = hours)) +
-  geom_histogram(fill = "#3a89cf", color = "black", bins = 15) +
-  labs(x = "Hours", y = "Count", title = "Histogram of distribution of Hours between treatment groups") +
   theme_economist() +
   facet_wrap(~ treatment)
 ```
@@ -228,4 +303,74 @@ ggplot(data = clean_data %>% filter(bmi > 10, age > 0), mapping = aes(x = hours,
 clean_data %>%
   ggplot(mapping = aes(x = age, y = hours)) +
   geom_point()
+```
+
+## Appendicies
+
+### Code to clean data in question 2
+
+```{r ech = TRUE}
+# Clean the data to impose uniformity upon the variable encoding.  
+clean_data <- raw %>%
+  mutate(`changed?` = seq(1, 1000) * 0) %>%
+  # Fixing messed up hours readings. They start at 60 and upwards and that's 1 hr so I
+  # fix based on that.
+  mutate(`changed?` = if_else(hours >= 60, `changed?` + 1, `changed?`),
+         hours = if_else(hours >= 60, hours / 60, hours)) %>%
+  mutate(`changed?` = if_else(community_center %in% c("WOODLAWN",
+                                                      "hyde park",
+                                                      "woodlawn",
+                                                      "Hyd Park",
+                                                      "HYDE PARK",
+                                                      "Hyde_Park",
+                                                      "HYDE_PARK",
+                                                      "hyde_park"), 
+                              `changed?` + 1, `changed?`),
+         community_center = if_else(community_center %in% c("WOODLAWN", "woodlawn"),
+                                    "Woodlawn", community_center),
+         community_center = if_else(community_center %in% c("hyde park", 
+                                                            "Hyd Park", 
+                                                            "HYDE PARK", 
+                                                            "HYDE_PARK", 
+                                                            "hyde_park",
+                                                            "Hyde_Park"), 
+                                    "Hyde Park", community_center)) %>%
+  # Recoding female variable to be factor categorical variable from 0/1/male/female.
+  mutate(`changed?` = if_else(female %in% c("female", "male"), 
+                              `changed?` + 1, `changed?`),
+         female = as.double(if_else(female == "female", 
+                                    "1", if_else(female == "male", "0", female)))) %>%
+  # -99 is missing age data so I reincode it at missing age data. 
+  # https://cran.r-project.org/web/packages/naniar/vignettes/replace-with-na.html
+  mutate(`changed?` = if_else(age == -99, `changed?` + 1, `changed?`), 
+         age = na_if(age,-99)) %>%
+  # Currently I have removed improper values, but I could also justify multiplying by 10.
+  mutate(`changed?` = if_else(bmi < 1, `changed?` + 1, `changed?`),
+         bmi = ifelse(bmi < 1, NA, bmi)) %>%
+  # Fix all BLACK observations to normal capitalization structure.
+  mutate(`changed?` = if_else(is.na(race_ethnicity), 
+                              `changed?`, if_else(race_ethnicity == "BLACK", 
+                                                  `changed?` + 1, `changed?`)),
+    race_ethnicity = if_else(is.na(race_ethnicity), 
+                             race_ethnicity, str_to_sentence(race_ethnicity))) # %>%
+# mutate(race_ethnicity = factor(race_ethnicity, c("Black", "Hispanic", "White"))) %>%
+# mutate(treatment = factor(treatment, labels = c("No Treatment ($0)", "Treatment ($10)"))) %>%
+# mutate(community_center = factor(community_center, labels = c("Woodlawn", "Hyde Park"))) %>%
+# mutate(education = factor(education, levels = c("less than high school",
+#                                                 "high school",
+#                                                 "higher degree")))
+```
+
+```{r}
+mean_ages <- randomness %>% group_by(treatment) %>% summarize(mean(age, na.rm = TRUE))
+mean_ages
+
+randomness %>% 
+  group_by(treatment) %>% 
+  count(age) %>% 
+  ggplot(aes(x=age, y=n, fill = treatment)) + 
+  geom_col(position = "dodge") +
+  geom_vline(mean_ages, mapping = aes(xintercept = `mean(age, na.rm = TRUE)`, color = treatment)) +
+  theme_economist() +
+  labs(title = "Mean age of participant in each group to prove randomness. Means are similar.")
 ```
