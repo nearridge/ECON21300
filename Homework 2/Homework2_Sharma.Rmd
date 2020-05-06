@@ -40,7 +40,7 @@ unclean_data_summary %>%
         caption = "Summary of Hours Exercised, No Data Cleaning")
 ```
 
-The mean hours exercised for individuals in the treatment group is `r unclean_data_summary %>% extract(2, 3)` and the mean hours exercised for individuals in the non-treatment group is `r unclean_data_summary %>% extract(1, 3)`. Assuming randomness was properly implimented in this study, the difference between these two numbers will be the Average Treatment Effect of the treatment based on the analysis I provide above. Thus, the Average Treatment Effect is **`r unclean_data_summary %>% extract(2, 3) - unclean_data_summary %>% extract(1, 3)`** with a standard error of **`r round(unclean_data_summary %>% extract(2, 5) - unclean_data_summary %>% extract(1, 5), digits = 4)`**.
+The mean hours exercised for individuals in the treatment group is `r unclean_data_summary %>% extract(2, 3)` and the mean hours exercised for individuals in the non-treatment group is `r unclean_data_summary %>% extract(1, 3)`. Assuming randomness was properly implemented in this study, the difference between these two numbers will be the Average Treatment Effect of the treatment based on the analysis I provide above. Thus, the Average Treatment Effect is **`r unclean_data_summary %>% extract(2, 3) - unclean_data_summary %>% extract(1, 3)`** with a standard error of **`r round(unclean_data_summary %>% extract(2, 5) - unclean_data_summary %>% extract(1, 5), digits = 4)`**.
 
 ## Question 2: It’s always a good idea to check a data set for errors. Clean this data set as you think appropriate. As an answer to this question, note all the kinds of changes you made to the data, a few words explaining your reason for the change, and which observations you changed (noting the observation number included as a variable in the data set for identification purposes).  If it is totally obvious which observations you changed and there are a large number in the category (e.g. if you decided to drop all White study participants), you can just note what you did for that change (“I dropped all white participants”) and explain why. 
 
@@ -52,7 +52,7 @@ raw %>%
   kable(caption = "Representative sample of unclean observations")
 ```
 
-Given these errors, I perform the following modifying operations to clean the dataset. See appendicies for the specific code I use to accomplish these modifications.
+Given these errors, I perform the following modifying operations to clean the data set. See appendices for the specific code I use to accomplish these modifications.
 
 ```{r}
 tibble(
@@ -67,13 +67,13 @@ tibble(
     "BMIs of less than 1 have undetermined error; recoded to be NA.*",
     "No change.",
     "Race/Ethnicity \"BLACK\" capitalization recoded to \"Black.\"",
-    "`changed?` notes and counts changes that occured in cleaning an observation."
+    "`changed?` notes and counts changes that occurred in cleaning an observation."
   )
 ) %>%
   knitr::kable()
 ```
 
-*The source of error on BMI is very difficult to determine. There are multiple hypotheses I have for the questionable data. It could be an error in data entry where the decimal was misplaced in which case multiplying by 100 would resolve the issue. It could be that the data was entered in a different unit than normal (pounds vs kilograms or meters vs feet) and the application of the BMI formula resulted in very low numbers. It is impossible to certify which error occured, if any, so the safest option is to ignore these `r nrow(raw %>% filter(bmi < 1))` rows. This is a small enough number that it will not significantly harm my interpretation. 
+*The source of error on BMI is very difficult to determine. There are multiple hypotheses I have for the questionable data. It could be an error in data entry where the decimal was misplaced in which case multiplying by 100 would resolve the issue. It could be that the data was entered in a different unit than normal (pounds vs kilograms or meters vs feet) and the application of the BMI formula resulted in very low numbers. It is impossible to certify which error occurred, if any, so the safest option is to ignore these `r nrow(raw %>% filter(bmi < 1))` rows. This is a small enough number that it will not significantly harm my interpretation. 
 
 ```{r}
 # Clean the data to impose uniformity upon the variable encoding.  
@@ -145,7 +145,7 @@ The mean number of hours exercised in both the treatment and control groups has 
 
 ## Question 4: Evaluate whether the randomization appears legitimate. If not, what is your evidence? (Hint: something went wrong.)
 
-An important piece of insight I gained from Eric's office hours were that given a sufficiently large sample size, perfect random assignment means by definition that one could randomly subdivide the data into equally sized groups of people and the distribution of the covariates should be the same. Thus, if I were to create histograms of some of the specified covariates in this dataset like BMI, age, race, or community, I should observe similar distributions and summary statistics to justify the representativeness and randomness of the allocation of the sample groups. Eric noted that on this problem set specifically is straightforward enough with regards to the identification of systematic differences that imply a non-random allocation that full t-test would not be necessary.
+An important piece of insight I gained from Eric's office hours were that given a sufficiently large sample size, perfect random assignment means by definition that one could randomly subdivide the data into equally sized groups of people and the distribution of the covariates should be the same. Thus, if I were to create histograms of some of the specified covariates in this data set like BMI, age, race, or community, I should observe similar distributions and summary statistics to justify the representatives and randomness of the allocation of the sample groups. Eric noted that on this problem set specifically is straightforward enough with regards to the identification of systematic differences that imply a non-random allocation that full t-test would not be necessary.
 
 ```{r}
 randomness <- clean_data %>%
@@ -223,7 +223,23 @@ ttest %>%
 
 The T-Test reveals that there is a statistically significant difference between the means of the two sample groups given the p-value of `r ttest %>% extract2(1, 5)`. 
 
-In general, plots of most other covariates look fairly decently normal. For brevity, I only provide summary statistics to articulate this point:
+Plots of other covariates imply that those variables were properly randomized. For instance, the plot for education visually provides evidence for an even distribution of education levels throughout the community centers and test groups.  
+
+```{r}
+randomness %>%
+  group_by(treatment, education, community_center) %>%
+  count() %>%
+  ggplot(mapping = aes(x = community_center, y = n, fill = fct_reorder(education, -n), label = n)) +
+  geom_col(position = "stack", color = "black") +
+  geom_text(position = "stack", vjust = 1.2, fontface = "bold", color = "white") +
+  theme_economist() +
+  theme(legend.position = "bottom", legend.key.width = unit(0.4, "cm"), legend.key.height = unit(0.4, "cm"), legend.text = element_text(size = 11)) +
+  scale_fill_economist(name = "Education") +
+  labs(x = "Community Center", y = "Count", title = "Treatment by Location and Race") +
+  facet_wrap(~ treatment)
+```
+
+For brevity, I only provide summary statistics to articulate this point further:
 
 ```{r warning = FALSE, message = FALSE}
 a <- randomness %>% 
@@ -241,9 +257,9 @@ left_join(a, b) %>%
 
 ## Question 5: Offer your best hypothesis/hypotheses as to what went wrong with the randomization? What evidence do you have to support your hypothesis(es)? For each of these hypotheses, describe your best strategy for estimating a plausible treatment effect, in spite of the bad randomization. (But don’t actually estimate that treatment effect.)
 
-My hypothesis is that Justin was trigger happy with the treatment assignment because he was stationed at the Woodlawn community center which is overrepresented in the treatment group. Furthermore, I predict that the differences in race and BMI are also side effects of this incorrect sampling. 
+My hypothesis is that Justin was trigger happy with his treatment assignments because he was stationed at the Woodlawn community center which is over represented in the treatment group. Question 4 provides a hint indicating that something "went wrong" in the data collection process. This implies that there was a material mistake in the collection separate from random variance in the population that might skew covariates in one direction or the other. The number of observations taken from each sample site is something that is in Eric and Justin's control, so I believe that this error is the thing that "went wrong" and is the source of the error in randomization.
 
-## Question 6: Given your answer to question five come up with your best estimate of the true treatment effect in the experiment as well as its standard error.
+The evidence I have collected to support this hypothesis is the chart I produce above as well as the following t-test which rejects the two-tailed null hypothesis that the means are equal. 
 
 ```{r}
 fittingd <- randomness %>%
@@ -261,32 +277,49 @@ fittingd <- randomness %>%
          white = if_else(race_ethnicity == "White", 1, 0),
          white = replace_na(white, 0),
          NArace = if_else(is.na(race_ethnicity), 1, 0)) %>%
-  select(-education, -race_ethnicity) %>%
+  select(-race_ethnicity, -education) %>%
   drop_na(bmi)
-  
 
-# fit1 <- lm(hours ~ treatment, data = fittingd)
-# fit2 <- lm(hours ~ treatment + community_center, data = fittingd)
-# fit3 <- lm(hours ~ treatment + community_center + hispanic + white, data = fittingd)
-# fit4 <- lm(hours ~ treatment + community_center + hispanic + white + bmi, data = fittingd)
-
-fit1 <- lm(hours ~ treatment, data = fittingd)
-fit2 <- lm(hours ~ treatment + bmi, data = fittingd)
-fit3 <- lm(hours ~ treatment + bmi + hispanic + white, data = fittingd)
-fit4 <- lm(hours ~ treatment + bmi + hispanic + white + community_center, data = fittingd)
-
-anova(fit1, fit2, fit3, fit4)
-
-fit1 %>% summary()
-fit2 %>% summary()
-fit3 %>% summary()
-fit4 %>% summary()
-
-augment(fit2)
-augment(fit4)
+t.test(community_center ~ treatment, data = fittingd) %>%
+  tidy() %>%
+  select(-method) %>%
+  kable()
 ```
 
-## Appendicies
+Furthermore, I hypothesize that the differences in race and BMI are also side effects of this incorrect sampling. As far as race goes, Hyde Park has the University of Chicago which dramatically alters the racial mixture of the south-side neighborhood. Most University affiliates are white, and most live in Hyde Park, so it makes sense that the Hyde Park neighborhood will have a significantly higher number of white individuals sampled compared to Woodlawn. 
+
+Secondly, I have absolutely zero evidence to back this up, but my gut is that Hyde Park has a lower average BMI than Woodlawn due to population differences in terms of primarely income. I have not explored this avenue however, so I would like to place a significant caveat on this point. No matter what, both race and BMI are attributes that are intrinsic to the neighborhoods but are also important to control for. 
+
+My strategy to control for the community center, race, and BMI data is to simply do a multiple linear regression across those, plus the independent treatment variable. I have coded dummy variables for race and community center as those are the primary categoricals I will be analyzing. 
+
+## Question 6: Given your answer to question five come up with your best estimate of the true treatment effect in the experiment as well as its standard error.
+
+```{r}
+fit1 <- lm(hours ~ treatment, data = fittingd)
+fit2 <- lm(hours ~ treatment + community_center, data = fittingd)
+fit3 <- lm(hours ~ treatment + community_center + hispanic + white, data = fittingd)
+fit4 <- lm(hours ~ treatment + community_center + hispanic + white + bmi, data = fittingd)
+
+anova(fit1, fit2, fit3, fit4) %>%
+  kable(col.names = c("Degrees of Freedom", "Residual Sum of Squareds", "delta DF", "Sum of Squares", "F Statistic", "Pr (> F)"))
+```
+
+Comparing the models confirms that a model with treatment, community center, race, and bmi is meaningfully more accurate than any other given the randomness and treatment type, I proceed with that as my model. 
+
+```{r}
+final <- fit4 %>%
+  augment() %>%
+  group_by(treatment) %>%
+  summarize(count = n(), mean(.fitted), sd(.fitted), se = sd(.fitted)/sqrt(n())) 
+
+final %>%
+  knitr::kable(col.names = c("Treatment", "Count", "Mean", "St Dev", "St Err"), 
+        caption = "Summary of Hours Exercised, Pure Treatment Effect")
+```
+
+After all this, the average treatment effect calculated after adjusting for errors in randomness and corresponding covariates is **`r round(final %>% extract(2, 3) - final %>% extract(1, 3), digits = 4)`** and the standard error on that treatment effect is **`r round(abs(final %>% extract(2, 5) - final %>% extract(1, 5)), digits = 4)`**.
+
+## Appendices
 
 ### Code to clean data in question 2
 
@@ -343,19 +376,19 @@ clean_data <- raw %>%
 ```
 
 ```{r}
-mean_ages <- randomness %>% group_by(treatment) %>% summarize(mean(age, na.rm = TRUE))
-mean_ages
-
-randomness %>% 
-  group_by(treatment) %>% 
-  count(age) %>% 
-  ggplot(aes(x=age, y=n, fill = treatment)) + 
-  geom_col(position = "dodge") +
-  geom_vline(mean_ages, mapping = aes(xintercept = `mean(age, na.rm = TRUE)`, color = treatment)) +
-  theme_economist() +
-  labs(title = "Mean age of participant in each group to prove randomness. Means are similar.")
-
-t.test(bmi ~ treatment, data = fittingd)
-t.test(treatment ~ community_center, data = fittingd)
+# mean_ages <- randomness %>% group_by(treatment) %>% summarize(mean(age, na.rm = TRUE))
+# mean_ages
+# 
+# randomness %>% 
+#   group_by(treatment) %>% 
+#   count(age) %>% 
+#   ggplot(aes(x=age, y=n, fill = treatment)) + 
+#   geom_col(position = "dodge") +
+#   geom_vline(mean_ages, mapping = aes(xintercept = `mean(age, na.rm = TRUE)`, color = treatment)) +
+#   theme_economist() +
+#   labs(title = "Mean age of participant in each group to prove randomness. Means are similar.")
+# 
+# t.test(bmi ~ treatment, data = fittingd)
+# t.test(treatment ~ community_center, data = fittingd)
 
 ```
