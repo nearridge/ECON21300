@@ -1,0 +1,126 @@
+---
+title: "Homework 3: Do Trivia Nerds Cheat?"
+author: "Neeraj Sharma"
+date: "05/19/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include = FALSE}
+library(tidyverse)
+library(lubridate)
+library(knitr)
+library(kableExtra)
+library(scales)
+library(ggthemes)
+```
+
+## Question 1: Clean data and report summary statistics of percent correct answers by year and round of the championship, as well as when these players are on the honor system. Provide hypotheses as to why these summary percentages might vary.
+
+```{r include = FALSE}
+raw <- read_csv("pset3.csv")
+
+edited <- raw %>% 
+  pivot_longer(
+    c(-name, -year, -round, -merge, -numbercorrect, -honorsystemcorrect),
+    names_to = "qno",
+    values_to = "ans"
+  ) %>%
+  mutate(qno = as.numeric(str_remove_all(qno, "q"))) %>%
+  mutate(honorsystemcorrect = na_if(honorsystemcorrect, -99))
+```
+
+```{r, warning = FALSE, message = FALSE, echo = FALSE, fig.width = 10, fig.height = 5}
+edited %>%
+  filter(merge == "merged", year == 2018) %>%
+  group_by(round, qno) %>% 
+  summarize(correct_ans = sum(ans), times_asked = n()) %>%
+  mutate(percent = percent(correct_ans/times_asked)) %>%
+  select(-correct_ans, -times_asked, Round = round) %>%
+  arrange(-desc(Round), -desc(qno)) %>%
+  mutate(qno = glue::glue("Q {qno}")) %>%
+  pivot_wider(id_cols = Round, names_from = qno, values_from = percent) %>%
+  kable(caption = "2018 Percent of Questions Answered Correctly")
+
+edited %>%
+  filter(merge == "merged", year == 2019) %>%
+  group_by(round, qno) %>% 
+  summarize(correct_ans = sum(ans), times_asked = n()) %>%
+  mutate(percent = percent(correct_ans/times_asked)) %>%
+  select(-correct_ans, -times_asked, Round = round) %>%
+  arrange(-desc(Round), -desc(qno)) %>%
+  mutate(qno = glue::glue("Q {qno}")) %>%
+  pivot_wider(id_cols = Round, names_from = qno, values_from = percent) %>%
+  kable(caption = "2019 Percent of Questions Answered Correctly")
+
+edited %>%
+  filter(merge == "merged") %>%
+  group_by(year, round, qno) %>% 
+  summarize(correct_ans = sum(ans), times_asked = n()) %>%
+  ggplot(mapping = aes(x = qno, y = correct_ans/times_asked)) +
+  geom_col() +
+  facet_grid(year ~ round) +
+  scale_x_continuous(breaks = seq(1, 12)) +
+  scale_y_continuous(labels = label_percent()) +
+  labs(title = "Percent of questions correctly answered", x = "Question Number", y = "% Correctly Answered")
+
+## What were the lifetime honor system averages of people who advanced through each stage of the competition.
+# 1212 people did not qualify to the champinonship. 
+edited %>%
+  group_by(year, round) %>%
+  summarize(sample_size = n(), mean_hnr_pct = mean(honorsystemcorrect, na.rm = TRUE)) %>%
+  mutate(mean_hnr_pct = percent(mean_hnr_pct, accuracy = 0.1)) %>%
+  drop_na() %>%
+  mutate(sample_size = glue::glue("(n = {sample_size})")) %>%
+  unite(join, c(mean_hnr_pct, sample_size), sep = " ") %>%
+  pivot_wider(id_cols = year, names_from = round, values_from = join) %>%
+  rename(Year = year) %>%
+  kable()
+
+home2018 <- edited %>%
+  filter(merge == "merged", year == 2018) %>%
+  group_by(year, round, qno) %>% 
+  summarize(correct_ans = sum(ans), times_asked = n()) %>%
+  mutate(percent = percent(correct_ans/times_asked)) %>%
+  select(-correct_ans, -times_asked, Round = round) %>%
+  arrange(-desc(Round), -desc(qno)) %>%
+  mutate(qno = glue::glue("Question {qno}")) %>%
+  pivot_wider(id_cols = c(qno, year), names_from = Round, values_from = percent)
+
+home2019 <- edited %>%
+  filter(merge == "merged", year == 2019) %>%
+  group_by(year, round, qno) %>% 
+  summarize(correct_ans = sum(ans), times_asked = n()) %>%
+  mutate(percent = percent(correct_ans/times_asked)) %>%
+  select(-correct_ans, -times_asked, Round = round) %>%
+  arrange(-desc(Round), -desc(qno)) %>%
+  mutate(qno = glue::glue("Question {qno}")) %>%
+  pivot_wider(id_cols = c(qno, year), names_from = Round, values_from = percent)
+
+bind_cols(home2018, home2019) %>%
+  ungroup() %>%
+  select(-year, -year1, -qno1) %>%
+  kable("latex", longtable = T, booktabs = T, caption = "Longtable") %>%
+  add_header_above(c(" ", "2018" = 4, "2019" = 4)) %>%
+  kable_styling(latex_options = c("repeat_header"))
+```
+
+
+```{r, include = FALSE}
+edited %>% 
+  filter(honorsystemcorrect > 0) %>%
+  ggplot(mapping = aes(x = honorsystemcorrect, y = numbercorrect/12)) +
+  geom_point(alpha = 0.075, stroke = 0) +
+  geom_smooth() +
+  scale_y_continuous(labels = label_percent()) +
+  scale_x_continuous(labels = label_percent()) +
+  labs(x = "% Correct on Honor System", y = "% Correct Live")
+
+edited %>%
+  filter(merge == "honorsystem_only") %>%
+  ggplot(aes(x = honorsystemcorrect)) +
+  geom_histogram()
+```

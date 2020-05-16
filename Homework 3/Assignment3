@@ -1,0 +1,16 @@
+Problem set 3
+
+Here’s the background. There is a big trivia league known as the Learned League. It runs on the honor system during the regular season. The Championship is done live to prevent cheating.  (The championship questions are also done with a strict time limit and in a high pressure environment.  During the regular season a person has 24 hours to answer the questions.) Combining data from the regular season and the championship, your task on this assignment is to determine whether there is cheating, how much, and who the cheaters are.
+
+Justin has posted the raw data under files. It is called pset3.csv.
+
+The problem set is due at 11:59 pm on Tuesday May 19!  That is less than one week from now, but I think because all the data you will need is provided, it should be feasible.
+
+Questions to answer:
+
+Before doing anything complicated, it is always worthwhile to understand your data and do any data cleaning that might be necessary. Describe  any data cleaning you dId and report summary statistics of percent correct answers by year and round of the championship, as well as when these players are on the honor system.  Provide hypotheses as to why these summary percentages might vary.
+Let’s focus on looking for cheating in the first two rounds of the Championship each year, before a bunch of people get eliminated. A critical piece in determining how much cheating there might be is to figure out how difficult  the championship questions are relative to the regular season questions for people who play honestly during the regular season. Suggest at least two awesome strategies for coming up with such an estimate. Be extremely explicit about the assumptions that need to be true for each of your strategies to yield truthful estimates. Given the likely violation of your assumptions, and say whether your estimates are likely to overestimate or underestimate the true amounts of cheating.
+Report your findings from the strategies in from question 2.  (Hint: the most sensible way to report your findings would be a predicted value for the percent of questions you would predict each player have gotten correct over the first two rounds if they were not cheating in the regular season.). For each strategy you used, answer the following questions: what is your estimate of the average percent of questions that are cheated on for the entire group during the regular season?  What percent of the players do you think cheat on at least 3 percent of the regular season questions?  How many individual players can you say cheat with a high degree of confidence?
+Explain why it is easier or harder to make claims about the aggregate amount of cheating in a sample versus identifying individual cheaters.
+The players with -99 for honor code scores dropped out of the league after making one or both championships. Can you make any inferences about whether they cheated more or less than the players who have remained in the league, despite the fact you know nothing about their percent correct in the regular season?
+the person who runs this league is interested in learning your findings. Create one visual that you think best would summarize your insights showing the amount/non-existence of cheating in his league.
