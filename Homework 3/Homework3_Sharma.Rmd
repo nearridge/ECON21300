@@ -16,9 +16,10 @@ library(knitr)
 library(kableExtra)
 library(scales)
 library(ggthemes)
+library(glue)
 ```
 
-## Question 1: Clean data and report summary statistics of percent correct answers by year and round of the championship, as well as when these players are on the honor system. Provide hypotheses as to why these summary percentages might vary.
+# Question 1: Clean data and report summary statistics of percent correct answers by year and round of the championship, as well as when these players are on the honor system. Provide hypotheses as to why these summary percentages might vary.
 
 ```{r include = FALSE}
 raw <- read_csv("pset3.csv")
@@ -33,6 +34,420 @@ edited <- raw %>%
   mutate(honorsystemcorrect = na_if(honorsystemcorrect, -99))
 ```
 
+In order to clean this data set, the first thing I do is convert it from a wide data structure to a tidy structure. Several relational variables like name, year, round, and honorsystemcorrect remain fixed, but I pivot questions vertically to make question number a unique variable. The second cleaning action I perform is I convert the data type of the question number column I just created by removing the "Q" at the beginning of each entry and coercing the datatype. The third modification I perform to clean the data is I coerce all "-99" observations in the `honorsystemcorrect` column to be NA. Often times, -99 is code for missing values.
+
+With the cleaned data, I was able to get insight into the aggregate performance of competitors in each year. 
+
+```{r echo = FALSE}
+edited %>%
+  group_by(year, round) %>%
+  summarize(sample_size = n(), 
+            mean(ans), 
+            max = max(numbercorrect),
+            min = min(numbercorrect),
+            mean = mean(numbercorrect),
+            sd = sd(numbercorrect)) %>%
+  drop_na() %>%
+  mutate(`mean(ans)` = percent(`mean(ans)`, accuracy = 0.1),
+         mean = round(mean, digits = 2),
+         sd = round(sd, digits = 2)) %>%
+  ungroup() %>%
+  pivot_wider(round, names_from = year, values_from = c(sample_size, `mean(ans)`, min, max, mean, sd)) %>%
+  select(round, 
+         sample_size_2018, `mean(ans)_2018`, min_2018, max_2018, mean_2018, sd_2018, 
+         sample_size_2019, `mean(ans)_2019`, min_2019, max_2019, mean_2019, sd_2019) %>%
+  kable("latex", booktabs = T, align = "r", caption = "Summary Statistics of Correct Answers by Year and Round of the Championship",
+        col.names = c("Round", 
+                      "N", "% Correct", "Min", "Max", "Mean", "St Dev", 
+                      "N", "% Correct", "Min", "Max", "Mean", "St Dev")) %>%
+  add_header_above(c(" ", "Questions Overall" = 2, "Individual Performance" = 4, "Questions Overall" = 2, "Individual Performance" = 4)) %>%
+  add_header_above(c(" ", "2018" = 6, "2019" = 6)) %>%
+  column_spec(1, border_right = T) %>%
+  column_spec(7, border_right = T)%>%
+  kable_styling(position = "center", latex_options = "hold_position")
+```
+
+In both years, the round to round percentage of questions answered correctly fluctuated
+
+```{r echo = FALSE}
+edited %>%
+  group_by(year, round) %>%
+  summarize(mean_hnr_pct = mean(honorsystemcorrect, na.rm = TRUE),
+            med = median(honorsystemcorrect, na.rm = TRUE),
+            min = min(honorsystemcorrect, na.rm = TRUE),
+            max = max(honorsystemcorrect, na.rm = TRUE)) %>%
+  mutate(mean_hnr_pct = percent(mean_hnr_pct, accuracy = 0.1),
+         med = percent(med, accuracy = 0.1),
+         min = percent(min, accuracy = 0.1),
+         max = percent(max, accuracy = 0.1)) %>%
+  drop_na() %>%
+  pivot_wider(id_cols = round, names_from = year, values_from = c(mean_hnr_pct, med, min, max)) %>%
+  select(round, 
+         mean_hnr_pct_2018, med_2018, min_2018, max_2018, 
+         mean_hnr_pct_2019, med_2019, min_2019, max_2019) %>%
+  kable("latex", booktabs = T, align = "r",
+        caption = "Summary Statistics of Honor System Performance by Year and Round",
+        col.names = c("Round", 
+                      "Mean", "Median", "Min", "Max", 
+                      "Mean", "Median", "Min", "Max")) %>%
+  add_header_above(c(" ", "2018" = 4, "2019" = 4)) %>%
+  column_spec(1, border_right = T) %>%
+  column_spec(5, border_right = T) %>%
+  kable_styling(position = "center", latex_options = "hold_position")
+```
+
+# Question 2: In the first two championship rounds, estimate how difficult the championship questions are relative to the regular season questions for people who play honestly during the regular season. Suggest at least two strategies for coming up with such an estimate. Be extremely explicit about the assumptions for each of your strategies to yield truthful estimates. Given the likely violation of your assumptions, say whether your estimates overestimate or underestimate the true amounts of cheating.
+
+I organize my strategies in two distinct steps as each step addresses a different part of this question. 
+
+The first step is to identify which people are cheaters and which people play fairly. This is important because I need to isolate a group of people that only experience one dimension of change to quantify the impact that change has. For cheaters, they go from cheating to not cheating, and "easy" questions to "hard" questions. That is a total of two changes. For fair players, they only go from easy questions to hard questions. That is only one change. Because fair players only experience one type of shift, the difference in their performance between honor system and live game play is only due to the increased difficulty of the questions. Thus, identifying these players and calculating the rate at which they miss questions in the regular season versus championship is key to understanding how difficult these two phases of competition are. 
+
+The second step is to actually evaluate the difficulty of championship questions relative to regular season questions. Once I have controlled for the participants' cheating tendencies, I can evaluate the magnitude and impact of the different types of questions in isolation.
+
+TWO STRATEGIES FOR PICKING CHEATERS, 1 STRATEGY FOR PICKING DIFFICULTY. 
+
+Cardinal assumptions, people try as hard as possible in championship. People only cheat upwards. 
+
+## Step 1: Identify Cheaters (Two Strategies)
+
+### Approach 1: Assuming uniform cheating
+
+One approach to estimate the increase in difficulty of championship questions compared to regular season questions begins with the assumption that all individuals play (un)fairly at the same rate. What this would mean is that every player cheats on questions as much as any other given player. It doesn't mean that all players are cheaters 100% of the time or all players live and die by the rule book, but whatever behavior one individual exhibits is shared by all others. Essentially, all players are uniform and benefit from cheating proportionally.
+
+Because this assumption of uniformity flattens out the skilled aspects of trivia, this approach has limited potential to yield an accurate estimate. All individuals are boosted equally by cheating so the net delta between mean correct answer percentage of championship and regular season questions remains fixed. However, parsing out the portion of the net delta that is due to the boost provided by cheating and the drag created by harder questions is difficult to calculate. If questions are equally difficult in both rounds, than the increase in the mean of the honor system metric is solely due to cheating. In order to calculate this 
+
+Approach 1 assumes that all players express the same propensity to cheat uniformly across the population. Obviously, this is a very flawed approach as it assumes all individuals are uniform which is unrealistic. Given that in the real world, some players cheat and others play fairly at variable rates, the total number of cheaters is lower in reality than this model would project. As a result, this method will likely overestimate the true amount of cheating. 
+
+DO NOT USE ASSUMPTION THAT PEOPLE IN ROUND 3 and $ ARE NOT CHEATING. 
+
+### Approach 2: Assume superior regular season performance is evidence of cheating
+
+A more nuanced strategy is to distinguish between cheaters and non-cheaters by calculating each person's percentage of correct answers given in the first two rounds and comparing that number to their honor system answers. If we assume that their scores in live competition represent a firm upper limit on their ability, than any individual who performed better at home must have cheated. 
+
+This assumes highly optimized behavior because it requires players to achieve and exhibit their full potential in a competitive environment. 
+
+This assumes that every player is playing at their full potential in the first two rounds of the championship. Secondly, it assumes that 
+
+### Approach 3: Segment population into cheaters and fair players via T-Testing
+
+An optimal strategy is to identify people whose play differs (statistically) significantly in the tournament from their play on the honor system. Specifically, I segment people by performing a one-tailed one-sample t-test for every individual. This t-test is one tailed because I am only interested in people who perform significantly worse in the championship than at home. Superior performance in the championship compared to performance at home is legitimate due to the live broadcast. I perform a one-sample t-test because I assume that the number of questions they answer at home is sufficiently large to approximate a population mean for that individual person. This is realistic, as Professor Levitt indicated that every participant had answered hundreds to thousands of questions at home during the regular season. In summary, these t-tests will tell us is if an individual's performance in competition is in line with their performance at home, or if their performance in competition is statistically significantly worse than their performance at home. 
+
+## Step 2: Difficulty between championship questions relative to the regular season questions (1 Strategy)
+
+### Approach 1: Difference between regular season and championships 
+
+Approach 1 assumes that all players express the same propensity to cheat uniformly across the population. Obviously, this is a very flawed approach as it assumes all individuals are uniform which is unrealistic. In essence, it assumes all players cheat at exactly the same rate. However, because some players cheat and others play fairly at variable rates, the total number of cheaters is lower in reality than this model would project. As a result, this method will likely overestimate the true amount of cheating. 
+
+# Question 3: Report your findings from the strategies in from question 2. (Hint: the most sensible way to report your findings would be a predicted value for the percent of questions you would predict each player have gotten correct over the first two rounds if they were not cheating in the regular season.). For each strategy you used, answer the following questions: what is your estimate of the average percent of questions that are cheated on for the entire group during the regular season? What percent of the players do you think cheat on at least 3 percent of the regular season questions? How many individual players can you say cheat with a high degree of confidence?
+
+## Approach 1: Difference between regular season and championships
+
+```{r include = FALSE}
+mean(edited$honorsystemcorrect, na.rm = TRUE) %>% percent(accuracy = 0.1)
+mean(edited$ans, na.rm = TRUE) %>% percent(accuracy = 0.1)
+(mean(edited$honorsystemcorrect, na.rm = TRUE) - mean(edited$ans, na.rm = TRUE)) %>% percent(accuracy = 0.1)
+```
+
+By this approach, `r mean(edited$honorsystemcorrect, na.rm = TRUE) %>% percent(accuracy = 0.1)` of regular season questions were answered correctly and `r mean(edited$ans, na.rm = TRUE) %>% percent(accuracy = 0.1)` of championship questions were answered correctly. Assuming uniformity, that means that the championship questions were `r (mean(edited$honorsystemcorrect, na.rm = TRUE) - mean(edited$ans, na.rm = TRUE)) %>% percent(accuracy = 0.1)` harder. 
+Given questions are `r (mean(edited$honorsystemcorrect, na.rm = TRUE) - mean(edited$ans, na.rm = TRUE)) %>% percent(accuracy = 0.1)` harder, A way to project is the minimum between the percent the answer correctly adjusted for difficulty (% correct + difficulty) and the number of questions actually answered correctly. 
+
+## Approach 2
+
+```{r}
+edited %>%
+  filter(round %in% c(1, 2)) %>%
+  group_by(year, name, honorsystemcorrect) %>%
+  summarize(pct_rt = mean(ans, na.rm = TRUE)) %>%
+  drop_na() %>%
+  mutate(illegal = if_else(honorsystemcorrect >= pct_rt, 1, 0)) %>%
+  ggplot(aes(x = honorsystemcorrect, y = pct_rt, color = illegal)) +
+  geom_point() +
+  geom_abline(slope=1)
+
+edited %>%
+  filter(round %in% c(1, 2)) %>%
+  group_by(year, name, honorsystemcorrect) %>%
+  summarize(pct_rt = mean(ans, na.rm = TRUE)) %>%
+  drop_na() %>%
+  mutate(illegal = if_else(honorsystemcorrect >= pct_rt, 1, 0))
+
+pp <- edited %>%
+  filter(round %in% c(1, 2)) %>%
+  group_by(year, name, honorsystemcorrect) %>%
+  summarize(pct_rt = mean(ans)) %>%
+  drop_na() %>%
+  ggplot(aes(honorsystemcorrect, pct_rt)) +
+  labs(subtitle = "Rounds 1 and 2, All Participants",
+       x = "Percent Correct, Honor System",
+       y= "Percent Correct, Championship") +
+  geom_abline(slope=1) +
+  geom_smooth(method = "lm") +
+  scale_x_continuous(labels = scales::label_percent()) +
+  scale_y_continuous(labels = scales::label_percent())
+pp +
+  geom_point() +
+  labs(title = "Percent Correct at Home vs Championship")
+```
+
+## Approach 3
+
+A better strategy is to run a one-sample t-test for every person's performance at home. 
+
+Using this approach, I identify a subset of people who I believe cheated in at home. 
+
+NOTE THAT THIS DATA ONLY INCLUDES PEOPLE WHO HAD PLAYED AT HOME AND PLAYED IN COMPETITION. THOSE WITHOUT VALUES FOR HONORSYSTEMCORRECT AND ANS WERE DISCOUNTED. 
+
+A one-sample t-test is used to compare the mean value of a sample with a constant value denoted mu0. The test has the null hypothesis that the population mean is equal to mu0 and the alternative hypothesis that it is not equal to mu0. http://www.instantr.com/2012/12/29/performing-a-one-sample-t-test-in-r/
+
+```{r}
+corr_r_1and2 <- edited %>%
+  filter(round %in% c(1, 2)) %>%
+  drop_na(honorsystemcorrect, ans) %>%
+  group_by(year, name, honorsystemcorrect) %>%
+  summarize(pct_rt = mean(ans))
+
+ttester <- function(current_selection, year_sel) {
+  obs <- edited %>%
+    filter(round %in% c(1, 2), 
+           year == year_sel,
+           name == current_selection)
+  # Case where people get a perfect score in competition returns no std dev so 
+  # do not do a ttest in those situations
+  if (sum(obs$ans) == 24) {
+    return(1)
+  }
+  honsyscorr_num <- obs %>%
+    magrittr::extract2(1,6)
+  pval <- t.test(obs$ans, mu = honsyscorr_num, alternative = "less") %>%
+    broom::tidy() %>%
+    magrittr::extract2(1, 3)
+}
+
+pvals <- edited %>%
+  drop_na(honorsystemcorrect, ans) %>%
+  distinct(name, year) %>%
+  mutate(pvals = map2(name, year, ttester),
+         statsig = if_else(pvals < 0.05, 1, 0))
+
+allplayers <- left_join(corr_r_1and2, pvals)
+
+# List of people that cheated
+cheaters <- allplayers %>%
+  filter(statsig == 1) %>%
+  select(-statsig) %>%
+  mutate(type = "cheater")
+
+# List of people that didn't cheat
+fairplayers <- allplayers %>%
+  filter(statsig == 0) %>%
+  select(-statsig) %>%
+  mutate(type = "fair")
+# %>%
+ # mutate(honorsystemcorrect = percent(honorsystemcorrect, accuracy = 0.1),
+ #        pct_rt = percent(pct_rt, accuracy = 0.1))
+```
+
+```{r}
+fairplayers %>%
+  ggplot(aes(honorsystemcorrect, pct_rt)) +
+  geom_point() +
+  labs(title = "FAIR PLAYERS ONLY -- Percent right at home vs percent right in champ",
+       subtitle = "Rounds 1 and 2 of Championship") +
+  scale_x_continuous(labels = scales::label_percent()) +
+  scale_y_continuous(labels = scales::label_percent()) +
+  geom_smooth(method = "lm")
+
+cheaters %>%
+  ggplot(aes(honorsystemcorrect, pct_rt)) +
+  geom_point() +
+  labs(title = "Cheaters ONLY -- Percent right at home vs percent right in champ",
+       subtitle = "Rounds 1 and 2 of Championship") +
+  scale_x_continuous(labels = scales::label_percent()) +
+  scale_y_continuous(labels = scales::label_percent()) +
+  geom_smooth(method = "lm")
+
+pp +
+  geom_point() +
+  labs(title = "Percent Correct at Home vs Championship")
+pp +
+  geom_point(cheaters, mapping = aes(honorsystemcorrect, pct_rt, color = "Cheaters")) +
+  geom_point(fairplayers, mapping = aes(honorsystemcorrect, pct_rt, color = "Fair Players")) +
+  labs(title = "Percent Correct at Home vs Championship by Player Type")# +
+#  theme(legend.position = c(0.93, 0.1))
+
+mean(fairplayers$honorsystemcorrect)
+mean(fairplayers$pct_rt)
+
+```
+
+```{r}
+edited %>%
+  filter(round %in% c(3, 4)) %>%
+  drop_na(honorsystemcorrect, ans) %>%
+  group_by(year, name, honorsystemcorrect) %>%
+  summarize(pct_rt = mean(ans))
+```
+
+```{r}
+edited %>%
+  filter(merge == "merged") %>%
+  group_by(year, round, qno) %>% 
+  summarize(correct_ans = sum(ans), times_asked = n()) %>%
+  ggplot(mapping = aes(x = qno, y = correct_ans/times_asked)) +
+  geom_col() +
+  facet_grid(round ~ year) +
+  scale_x_continuous(breaks = seq(1, 12)) +
+  scale_y_continuous(limits = c(0, 1), labels = label_percent()) +
+  labs(title = "Percent of questions correctly answered in Championship", 
+       subtitle = "All Players",
+       x = "Question Number", 
+       y = "% Correctly Answered")
+
+inner_join(fairplayers, edited) %>%
+  group_by(year, round, qno) %>% 
+  summarize(correct_ans = sum(ans), times_asked = n()) %>%
+  ggplot(mapping = aes(x = qno, y = correct_ans/times_asked)) +
+  geom_col() +
+  facet_grid(round ~ year) +
+  scale_x_continuous(breaks = seq(1, 12)) +
+  scale_y_continuous(limits = c(0, 1), labels = label_percent()) +
+  labs(title = "Percent of questions correctly answered in Championship", 
+       subtitle = "Fair Players only",
+       x = "Question Number", 
+       y = "% Correctly Answered")
+
+inner_join(cheaters, edited) %>%
+  group_by(year, round, qno) %>% 
+  summarize(correct_ans = sum(ans), times_asked = n()) %>%
+  ggplot(mapping = aes(x = qno, y = correct_ans/times_asked)) +
+  geom_col() +
+  facet_grid(round ~ year) +
+  scale_x_continuous(breaks = seq(1, 12)) +
+  scale_y_continuous(limits = c(0, 1), labels = label_percent()) +
+  labs(title = "Percent of questions correctly answered in Championship", 
+       subtitle = "Cheaters only",
+       x = "Question Number", 
+       y = "% Correctly Answered")
+
+
+bind_rows(cheaters, fairplayers) %>%
+  inner_join(edited) %>%
+  group_by(year, round, qno, type) %>% 
+  summarize(correct_ans = sum(ans), times_asked = n()) %>%
+  ggplot(aes(x = qno, y = correct_ans/times_asked, group = type, fill = type)) +
+  geom_col(position = "dodge") +
+  facet_grid(round ~ year) +
+  scale_x_continuous(breaks = seq(1, 12)) +
+  scale_y_continuous(limits = c(0, 1), labels = label_percent()) +
+  labs(title = "Percent of questions correctly answered in Championship", 
+       subtitle = "Both",
+       x = "Question Number", 
+       y = "% Correctly Answered")
+```
+
+```{r}
+cheaters %>%
+  mutate(honorsystemcorrect = percent(honorsystemcorrect, accuracy = 0.1),
+         pct_rt = percent(pct_rt, accuracy = 0.1)) %>%
+  slice(1:10) #%>%
+#  kable(col.names = c("Year", "Name", "Percent Correct, Honor System", "Percent Correct, Competition", "P-Value"))
+```
+
+### Step 2: how difficult the championship questions are relative to the regular season questions for the above group of people
+
+One fairly awful strategy is to calculate mean correctness percentage of all eligible participants at home, and then compare that to the mean correctness percentage of all eligible participants in competition. By eligible, I mean participants that pass the tests I define in step 1. 
+
+
+
+One better strategy is to 
+
+```{r}
+# Lets find people who I think played honestly during the regular season. 
+edited %>%
+  distinct(name, honorsystemcorrect) %>%
+  ggplot(aes(honorsystemcorrect)) +
+  geom_histogram()
+
+edited %>%
+  group_by(name, year, round) %>%
+  mutate(stdev = sd(ans), competcorrect = mean(ans)) %>%
+  mutate(tstatistic = (competcorrect - honorsystemcorrect)/(stdev/sqrt(12)))
+
+```
+
+4. Explain why it is easier or harder to make claims about the aggregate amount of cheating in a sample versus identifying individual cheaters.
+
+5. The players with -99 for honor code scores dropped out of the league after making one or both championships. Can you make any inferences about whether they cheated more or less than the players who have remained in the league, despite the fact you know nothing about their percent correct in the regular season?
+
+I've identified the characteristics of what a cheater looks like, and I think all these people fit the bill based on one axis. Not a single person who stayed who had the same championship scores as the -99ers was categoriesed as a fair player. Thus, I think they are cheaters. 
+
+```{r}
+dropouts <- edited %>% 
+  filter(is.na(honorsystemcorrect)) %>%
+  distinct(name, year) %>%
+  pull(name)
+
+x <- edited %>%
+  filter(name %in% dropouts) %>%
+  group_by(name, year) %>%
+  summarize(pct_corr = mean(ans)) %>%
+  ungroup() %>%
+  count(pct_corr)
+
+ggplot() +
+  geom_abline(slope = 1, alpha = 0.25) +
+  geom_point(cheaters, mapping = aes(honorsystemcorrect, pct_rt, color = "Cheaters"), alpha = 0.25) +
+  geom_point(fairplayers, mapping = aes(honorsystemcorrect, pct_rt, color = "Fair Players"), alpha = 0.25) +
+  geom_hline(x, mapping = aes(yintercept = pct_corr), linetype = "longdash") +
+  labs(title = "Percent Correct at Home vs Championship by Player Type") +
+  theme(panel.grid.major = element_blank(), panel.grid.minor = element_blank())
+```
+
+6. the person who runs this league is interested in learning your findings. Create one visual that you think best would summarize your insights showing the amount/non-existence of cheating in his league.
+
+```{r, include = FALSE}
+edited %>% 
+  filter(honorsystemcorrect > 0) %>%
+  ggplot(mapping = aes(x = honorsystemcorrect, y = numbercorrect/12)) +
+  geom_point(alpha = 0.075, stroke = 0) +
+  geom_smooth() +
+  scale_y_continuous(labels = label_percent()) +
+  scale_x_continuous(labels = label_percent()) +
+  labs(x = "% Correct on Honor System", y = "% Correct Live")
+
+edited %>%
+  filter(merge == "honorsystem_only") %>%
+  ggplot(aes(x = honorsystemcorrect)) +
+  geom_histogram()
+```
+
+```{r include = FALSE}
+
+edited %>%
+  filter(merge == "merged", year == 2018) %>%
+  group_by(round, qno) %>% 
+  summarize(correct_ans = sum(ans), times_asked = n()) %>%
+  mutate(percent = percent(correct_ans/times_asked)) %>%
+  select(-correct_ans, -times_asked, Round = round) %>%
+  arrange(-desc(Round), -desc(qno)) %>%
+  mutate(qno = glue("Q {qno}")) %>%
+  pivot_wider(id_cols = Round, names_from = qno, values_from = percent) %>%
+  kable(booktabs = T, caption = "2018 Percent of Questions Answered Correctly")
+
+edited %>%
+  filter(merge == "merged", year == 2019) %>%
+  group_by(round, qno) %>% 
+  summarize(correct_ans = sum(ans), times_asked = n()) %>%
+  mutate(percent = percent(correct_ans/times_asked)) %>%
+  select(-correct_ans, -times_asked, Round = round) %>%
+  arrange(-desc(Round), -desc(qno)) %>%
+  mutate(qno = glue("Q {qno}")) %>%
+  pivot_wider(id_cols = Round, names_from = qno, values_from = percent) %>%
+  kable(booktabs = T, caption = "2019 Percent of Questions Answered Correctly")
+```
+
+# Appendices
+
 ```{r, warning = FALSE, message = FALSE, echo = FALSE}
 champ2018 <- edited %>%
   filter(merge == "merged", year == 2018) %>%
@@ -41,7 +456,7 @@ champ2018 <- edited %>%
   mutate(percent = percent(correct_ans/times_asked)) %>%
   select(-correct_ans, -times_asked, Round = round) %>%
   arrange(-desc(Round), -desc(qno)) %>%
-  mutate(qno = glue::glue("Question {qno}")) %>%
+  mutate(qno = glue("Question {qno}")) %>%
   pivot_wider(id_cols = c(qno, year), names_from = Round, values_from = percent)
 
 champ2019 <- edited %>%
@@ -51,7 +466,7 @@ champ2019 <- edited %>%
   mutate(percent = percent(correct_ans/times_asked)) %>%
   select(-correct_ans, -times_asked, Round = round) %>%
   arrange(-desc(Round), -desc(qno)) %>%
-  mutate(qno = glue::glue("Question {qno}")) %>%
+  mutate(qno = glue("Question {qno}")) %>%
   pivot_wider(id_cols = c(qno, year), names_from = Round, values_from = percent)
 
 size <- edited %>%
@@ -92,152 +507,13 @@ edited %>%
   summarize(sample_size = n(), mean_hnr_pct = mean(honorsystemcorrect, na.rm = TRUE)) %>%
   mutate(mean_hnr_pct = percent(mean_hnr_pct, accuracy = 0.1)) %>%
   drop_na() %>%
-  mutate(sample_size = glue::glue("(n = {sample_size})")) %>%
+  mutate(sample_size = glue("(n = {sample_size})")) %>%
   unite(join, c(mean_hnr_pct, sample_size), sep = " ") %>%
   pivot_wider(id_cols = year, names_from = round, values_from = join) %>%
   rename(Year = year) %>%
   kable(booktabs = T, caption = "Percentages of Honor System Success by Round and Year") %>%
   kable_styling(position = "center")
 
-edited %>%
-  group_by(year, round) %>%
-  summarize(sample_size = n(), mean_hnr_pct = mean(honorsystemcorrect, na.rm = TRUE)) %>%
-  drop_na() %>%
-  ggplot(mapping = aes(x = round, y = mean_hnr_pct)) +
-  geom_col() +
-  facet_wrap(~ year)
-
 # List of all unique individuals. Is there any overlap between those in the champ and those not in the champ?
 #edited %>% select(name, merge) %>% distinct()
-```
-
-## Let’s focus on looking for cheating in the first two rounds of the Championship each year, before a bunch of people get eliminated. **A critical piece in determining how much cheating there might be is to figure out how difficult the championship questions are relative to the regular season questions for people who play honestly during the regular season. Suggest at least two awesome strategies for coming up with such an estimate.** Be extremely explicit about the assumptions that need to be true for each of your strategies to yield truthful estimates. Given the likely violation of your assumptions, and say whether your estimates are likely to overestimate or underestimate the true amounts of cheating.
-
-I organize my answer to this question in two distinct steps as each step introduces a unique set of error/variability into the results I arrive at. 
-
-### Step 1: People who play honestly during the regular season
-
-In order to figure out people who play honestly during the regular season 
-
-One fairly awful strategy is to calculate percent correct in the first two rounds of each person and if they are worse in competition than at home, assume they cheated at home. 
-
-```{r}
-edited %>%
-  filter(round %in% c(1, 2)) %>%
-  group_by(year, name, honorsystemcorrect) %>%
-  summarize(pct_rt = mean(ans)) %>%
-  ggplot(aes(honorsystemcorrect, pct_rt)) +
-  geom_point() +
-  labs(title = "Percent right at home vs percent right in champ",
-       subtitle = "Rounds 1 and 2 of Championship") +
-  geom_smooth(method = "lm")
-```
-
-One slightly better strategy is to run a t-test with each person's as a sample mean against the population mean where the population mean is their at home score. What that'll tell us is if their performance in competition is in line with the mean. We want a one sample t-test because people cannot cheat in live competition, so only poor performance in the live competition should be analyzed. 
-
-A one-sample t-test is used to compare the mean value of a sample with a constant value denoted μ0. The test has the null hypothesis that the population mean is equal to μ0 and the alternative hypothesis that it is not equal to μ0. http://www.instantr.com/2012/12/29/performing-a-one-sample-t-test-in-r/
-
-```{r}
-corr_r_1and2 <- edited %>%
-  filter(round %in% c(1, 2)) %>%
-  drop_na(honorsystemcorrect, ans) %>%
-  group_by(year, name, honorsystemcorrect) %>%
-  summarize(pct_rt = mean(ans))
-
-ttester <- function(current_selection) {
-  obs <- edited %>%
-    filter(round %in% c(1, 2), name == current_selection)
-  honsyscorr_num <- obs %>%
-    magrittr::extract2(1,6)
-  pval <- t.test(obs$ans, mu = honsyscorr_num, alternative = "less") %>%
-    broom::tidy() %>%
-    magrittr::extract2(1, 3)
-}
-
-pvals <- edited %>%
-  drop_na(honorsystemcorrect, ans) %>%
-  distinct(name) %>%
-  mutate(pvals = map_chr(name, ttester), 
-         statsig = if_else(pvals < 0.05, 1, 0))
-
-
-left_join(corr_r_1and2, pvals)
-
-# List of people that cheated
-left_join(corr_r_1and2, pvals) %>%
-  filter(statsig == 1) %>%
-  select(-statsig) %>%
-  mutate(honorsystemcorrect = percent(honorsystemcorrect, accuracy = 0.1),
-         pct_rt = percent(pct_rt, accuracy = 0.1))
-
-left_join(corr_r_1and2, pvals) %>%
-  filter(statsig == 0) %>%
-  select(-statsig) %>%
-  mutate(honorsystemcorrect = percent(honorsystemcorrect, accuracy = 0.1),
-         pct_rt = percent(pct_rt, accuracy = 0.1))
-
-edited %>% drop_na(honorsystemcorrect, ans) %>% distinct(name)
-
-```
-
-### Step 2: how difficult the championship questions are relative to the regular season questions for the above group of people
-
-One fairly awful strategy is to calculate mean correctness percentage of all eligible participants at home, and then compare that to the mean correctness percentage of all eligible participants in competition. By eligible, I mean participants that pass the tests I define in step 1. 
-
-
-One better strategy is to 
-```{r}
-# Lets find people who I think played honestly during the regular season. 
-edited %>%
-  distinct(name, honorsystemcorrect) %>%
-  ggplot(aes(honorsystemcorrect)) +
-  geom_histogram()
-
-edited %>%
-  group_by(name, year, round) %>%
-  mutate(stdev = sd(ans), competcorrect = mean(ans)) %>%
-  mutate(tstatistic = (competcorrect - honorsystemcorrect)/(stdev/sqrt(12)))
-
-```
-
-
-```{r, include = FALSE}
-edited %>% 
-  filter(honorsystemcorrect > 0) %>%
-  ggplot(mapping = aes(x = honorsystemcorrect, y = numbercorrect/12)) +
-  geom_point(alpha = 0.075, stroke = 0) +
-  geom_smooth() +
-  scale_y_continuous(labels = label_percent()) +
-  scale_x_continuous(labels = label_percent()) +
-  labs(x = "% Correct on Honor System", y = "% Correct Live")
-
-edited %>%
-  filter(merge == "honorsystem_only") %>%
-  ggplot(aes(x = honorsystemcorrect)) +
-  geom_histogram()
-```
-
-```{r include = FALSE}
-
-edited %>%
-  filter(merge == "merged", year == 2018) %>%
-  group_by(round, qno) %>% 
-  summarize(correct_ans = sum(ans), times_asked = n()) %>%
-  mutate(percent = percent(correct_ans/times_asked)) %>%
-  select(-correct_ans, -times_asked, Round = round) %>%
-  arrange(-desc(Round), -desc(qno)) %>%
-  mutate(qno = glue::glue("Q {qno}")) %>%
-  pivot_wider(id_cols = Round, names_from = qno, values_from = percent) %>%
-  kable(booktabs = T, caption = "2018 Percent of Questions Answered Correctly")
-
-edited %>%
-  filter(merge == "merged", year == 2019) %>%
-  group_by(round, qno) %>% 
-  summarize(correct_ans = sum(ans), times_asked = n()) %>%
-  mutate(percent = percent(correct_ans/times_asked)) %>%
-  select(-correct_ans, -times_asked, Round = round) %>%
-  arrange(-desc(Round), -desc(qno)) %>%
-  mutate(qno = glue::glue("Q {qno}")) %>%
-  pivot_wider(id_cols = Round, names_from = qno, values_from = percent) %>%
-  kable(booktabs = T, caption = "2019 Percent of Questions Answered Correctly")
 ```
