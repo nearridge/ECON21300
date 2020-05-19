@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019) (preloaded format=pdflatex 2019.5.8)  19 MAY 2020 00:14
+This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019) (preloaded format=pdflatex 2019.5.8)  19 MAY 2020 16:13
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -650,7 +650,7 @@ Package xcolor Info: Model `Gray' substituted by `gray' on input line 1370.
 Package xcolor Info: Model `wave' substituted by `hsb' on input line 1371.
 ) (./Homework3_Sharma.aux
 
-LaTeX Warning: Label `tab:unnamed-chunk-16' multiply defined.
+LaTeX Warning: Label `tab:unnamed-chunk-17' multiply defined.
 
 )
 \openout1 = `Homework3_Sharma.aux'.
@@ -829,313 +829,148 @@ eady used, duplicate ignored
 
 \AtBegShi@Output ...ipout \box \AtBeginShipoutBox 
                                                   \fi \fi 
-l.223 
-      pdfTeX warning (ext4): destination with the same identifier (name{table.2
-}) has been already used, duplicate ignored
+l.230 ...restimate-the-true-amounts-of-cheating.}}
+                                                  pdfTeX warning (ext4): destin
+ation with the same identifier (name{table.2}) has been already used, duplicate
+ ignored
 
 \AtBegShi@Output ...ipout \box \AtBeginShipoutBox 
                                                   \fi \fi 
-l.223 
-      ] [2]
-LaTeX Font Info:    Try loading font information for TS1+lmr on input line 344.
+l.230 ...restimate-the-true-amounts-of-cheating.}}
+                                                  ] [2]
+LaTeX Font Info:    Try loading font information for TS1+lmr on input line 381.
 
 (/usr/local/texlive/2019/texmf-dist/tex/latex/lm/ts1lmr.fd
 File: ts1lmr.fd 2009/10/30 v1.6 Font defs for Latin Modern
-)
-<Homework3_Sharma_files/figure-latex/unnamed-chunk-5-1.pdf, id=80, 463.7325pt x
+) [3]
+<Homework3_Sharma_files/figure-latex/unnamed-chunk-5-1.pdf, id=85, 463.7325pt x
  316.18124pt>
 File: Homework3_Sharma_files/figure-latex/unnamed-chunk-5-1.pdf Graphic file (t
 ype pdf)
 <use Homework3_Sharma_files/figure-latex/unnamed-chunk-5-1.pdf>
 Package pdftex.def Info: Homework3_Sharma_files/figure-latex/unnamed-chunk-5-1.
-pdf  used on input line 360.
+pdf  used on input line 397.
 (pdftex.def)             Requested size: 463.73842pt x 316.18529pt.
-[3] [4 <./Homework3_Sharma_files/figure-latex/unnamed-chunk-5-1.pdf>]
-<Homework3_Sharma_files/figure-latex/unnamed-chunk-7-1.pdf, id=102, 457.71pt x 
-315.1775pt>
+[4 <./Homework3_Sharma_files/figure-latex/unnamed-chunk-5-1.pdf>]
+<Homework3_Sharma_files/figure-latex/unnamed-chunk-7-1.pdf, id=98, 463.7325pt x
+ 316.18124pt>
 File: Homework3_Sharma_files/figure-latex/unnamed-chunk-7-1.pdf Graphic file (t
 ype pdf)
 <use Homework3_Sharma_files/figure-latex/unnamed-chunk-7-1.pdf>
 Package pdftex.def Info: Homework3_Sharma_files/figure-latex/unnamed-chunk-7-1.
-pdf  used on input line 460.
-(pdftex.def)             Requested size: 457.72984pt x 315.19115pt.
-<Homework3_Sharma_files/figure-latex/unnamed-chunk-7-2.pdf, id=103, 463.7325pt 
-x 316.18124pt>
-File: Homework3_Sharma_files/figure-latex/unnamed-chunk-7-2.pdf Graphic file (t
-ype pdf)
-<use Homework3_Sharma_files/figure-latex/unnamed-chunk-7-2.pdf>
-Package pdftex.def Info: Homework3_Sharma_files/figure-latex/unnamed-chunk-7-2.
-pdf  used on input line 461.
+pdf  used on input line 474.
 (pdftex.def)             Requested size: 463.73842pt x 316.18529pt.
-
-Underfull \hbox (badness 10000) in paragraph at lines 460--462
-[][]
- []
-
-[5 <./Homework3_Sharma_files/figure-latex/unnamed-chunk-7-1.pdf>] [6 <./Homewor
-k3_Sharma_files/figure-latex/unnamed-chunk-7-2.pdf>]
-
-Package xcolor Warning: Incompatible color definition on input line 532.
-
-LaTeX Font Info:    Font shape `T1/lmtt/bx/n' in size <10> not available
-(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 534.
-
-Package xcolor Warning: Incompatible color definition on input line 565.
-
-
-Package xcolor Warning: Incompatible color definition on input line 565.
-
-
-Package xcolor Warning: Incompatible color definition on input line 571.
-
-LaTeX Font Info:    Try loading font information for TS1+lmtt on input line 577
-.
-(/usr/local/texlive/2019/texmf-dist/tex/latex/lm/ts1lmtt.fd
-File: ts1lmtt.fd 2009/10/30 v1.6 Font defs for Latin Modern
-)
-
-Package xcolor Warning: Incompatible color definition on input line 581.
-
-
-Package xcolor Warning: Incompatible color definition on input line 581.
-
-
-Package xcolor Warning: Incompatible color definition on input line 583.
-
-
-Package xcolor Warning: Incompatible color definition on input line 604.
-
-
-Package xcolor Warning: Incompatible color definition on input line 604.
-
-
-Overfull \vbox (1.82169pt too high) detected at line 604
- []
-
-
-Package xcolor Warning: Incompatible color definition on input line 604.
-
-[7]
-
-Package xcolor Warning: Incompatible color definition on input line 604.
-
-
-Package xcolor Warning: Incompatible color definition on input line 604.
-
-<Homework3_Sharma_files/figure-latex/unnamed-chunk-9-1.pdf, id=135, 463.7325pt 
+<Homework3_Sharma_files/figure-latex/unnamed-chunk-8-1.pdf, id=99, 468.75125pt 
 x 316.18124pt>
-File: Homework3_Sharma_files/figure-latex/unnamed-chunk-9-1.pdf Graphic file (t
+File: Homework3_Sharma_files/figure-latex/unnamed-chunk-8-1.pdf Graphic file (t
 ype pdf)
-<use Homework3_Sharma_files/figure-latex/unnamed-chunk-9-1.pdf>
-Package pdftex.def Info: Homework3_Sharma_files/figure-latex/unnamed-chunk-9-1.
-pdf  used on input line 606.
-(pdftex.def)             Requested size: 463.73842pt x 316.18529pt.
-
-Package xcolor Warning: Incompatible color definition on input line 608.
-
-
-Package xcolor Warning: Incompatible color definition on input line 629.
-
-
-Package xcolor Warning: Incompatible color definition on input line 629.
-
-
-Overfull \vbox (0.1585pt too high) detected at line 629
- []
-
-
-Package xcolor Warning: Incompatible color definition on input line 629.
-
-[8 <./Homework3_Sharma_files/figure-latex/unnamed-chunk-9-1.pdf>]
-
-Package xcolor Warning: Incompatible color definition on input line 629.
-
-
-Package xcolor Warning: Incompatible color definition on input line 629.
-
-<Homework3_Sharma_files/figure-latex/unnamed-chunk-9-2.pdf, id=147, 463.7325pt 
-x 316.18124pt>
-File: Homework3_Sharma_files/figure-latex/unnamed-chunk-9-2.pdf Graphic file (t
-ype pdf)
-<use Homework3_Sharma_files/figure-latex/unnamed-chunk-9-2.pdf>
-Package pdftex.def Info: Homework3_Sharma_files/figure-latex/unnamed-chunk-9-2.
-pdf  used on input line 631.
-(pdftex.def)             Requested size: 463.73842pt x 316.18529pt.
-
-Package xcolor Warning: Incompatible color definition on input line 633.
-
-
-Package xcolor Warning: Incompatible color definition on input line 637.
-
-
-Package xcolor Warning: Incompatible color definition on input line 637.
-
-
-Package xcolor Warning: Incompatible color definition on input line 643.
-
-
-Package xcolor Warning: Incompatible color definition on input line 647.
-
-
-Package xcolor Warning: Incompatible color definition on input line 647.
-
-
-Package xcolor Warning: Incompatible color definition on input line 653.
-
-
-Package xcolor Warning: Incompatible color definition on input line 669.
-
-
-Package xcolor Warning: Incompatible color definition on input line 669.
-
-<Homework3_Sharma_files/figure-latex/unnamed-chunk-10-1.pdf, id=148, 463.7325pt
+<use Homework3_Sharma_files/figure-latex/unnamed-chunk-8-1.pdf>
+Package pdftex.def Info: Homework3_Sharma_files/figure-latex/unnamed-chunk-8-1.
+pdf  used on input line 497.
+(pdftex.def)             Requested size: 468.75009pt x 316.18047pt.
+[5 <./Homework3_Sharma_files/figure-latex/unnamed-chunk-7-1.pdf>]
+<Homework3_Sharma_files/figure-latex/unnamed-chunk-10-1.pdf, id=111, 463.7325pt
  x 316.18124pt>
 File: Homework3_Sharma_files/figure-latex/unnamed-chunk-10-1.pdf Graphic file (
 type pdf)
 <use Homework3_Sharma_files/figure-latex/unnamed-chunk-10-1.pdf>
 Package pdftex.def Info: Homework3_Sharma_files/figure-latex/unnamed-chunk-10-1
-.pdf  used on input line 671.
+.pdf  used on input line 558.
 (pdftex.def)             Requested size: 463.73842pt x 316.18529pt.
-
-Package xcolor Warning: Incompatible color definition on input line 673.
-
-[9 <./Homework3_Sharma_files/figure-latex/unnamed-chunk-9-2.pdf>]
-
-Package xcolor Warning: Incompatible color definition on input line 695.
-
-
-Package xcolor Warning: Incompatible color definition on input line 695.
-
-<Homework3_Sharma_files/figure-latex/unnamed-chunk-10-2.pdf, id=161, 465.74pt x
- 316.18124pt>
-File: Homework3_Sharma_files/figure-latex/unnamed-chunk-10-2.pdf Graphic file (
+[6 <./Homework3_Sharma_files/figure-latex/unnamed-chunk-8-1.pdf>]
+<Homework3_Sharma_files/figure-latex/unnamed-chunk-11-1.pdf, id=125, 465.74pt x
+ 319.1925pt>
+File: Homework3_Sharma_files/figure-latex/unnamed-chunk-11-1.pdf Graphic file (
 type pdf)
-<use Homework3_Sharma_files/figure-latex/unnamed-chunk-10-2.pdf>
-Package pdftex.def Info: Homework3_Sharma_files/figure-latex/unnamed-chunk-10-2
-.pdf  used on input line 701.
-(pdftex.def)             Requested size: 465.75307pt x 316.19011pt.
-
-Package xcolor Warning: Incompatible color definition on input line 703.
-
-[10 <./Homework3_Sharma_files/figure-latex/unnamed-chunk-10-1.pdf>]
-
-Package xcolor Warning: Incompatible color definition on input line 710.
-
-
-Package xcolor Warning: Incompatible color definition on input line 710.
-
-
-Package xcolor Warning: Incompatible color definition on input line 730.
-
-
-Package xcolor Warning: Incompatible color definition on input line 734.
-
-
-Package xcolor Warning: Incompatible color definition on input line 734.
-
-[11 <./Homework3_Sharma_files/figure-latex/unnamed-chunk-10-2.pdf>]
-
-Package xcolor Warning: Incompatible color definition on input line 748.
-
-
-Package xcolor Warning: Incompatible color definition on input line 756.
-
-
-Package xcolor Warning: Incompatible color definition on input line 756.
-
-<Homework3_Sharma_files/figure-latex/unnamed-chunk-12-1.pdf, id=185, 459.7175pt
- x 315.1775pt>
+<use Homework3_Sharma_files/figure-latex/unnamed-chunk-11-1.pdf>
+Package pdftex.def Info: Homework3_Sharma_files/figure-latex/unnamed-chunk-11-1
+.pdf  used on input line 571.
+(pdftex.def)             Requested size: 465.73886pt x 319.19171pt.
+[7 <./Homework3_Sharma_files/figure-latex/unnamed-chunk-10-1.pdf>]
+<Homework3_Sharma_files/figure-latex/unnamed-chunk-12-1.pdf, id=138, 463.7325pt
+ x 316.18124pt>
 File: Homework3_Sharma_files/figure-latex/unnamed-chunk-12-1.pdf Graphic file (
 type pdf)
 <use Homework3_Sharma_files/figure-latex/unnamed-chunk-12-1.pdf>
 Package pdftex.def Info: Homework3_Sharma_files/figure-latex/unnamed-chunk-12-1
-.pdf  used on input line 766.
-(pdftex.def)             Requested size: 459.74442pt x 315.19595pt.
-
-Package xcolor Warning: Incompatible color definition on input line 768.
-
-
-Package xcolor Warning: Incompatible color definition on input line 775.
-
-
-Package xcolor Warning: Incompatible color definition on input line 775.
-
-[12 <./Homework3_Sharma_files/figure-latex/unnamed-chunk-12-1.pdf>]
-
-Package xcolor Warning: Incompatible color definition on input line 815.
-
-
-Package xcolor Warning: Incompatible color definition on input line 837.
-
-
-Package xcolor Warning: Incompatible color definition on input line 837.
-
-<Homework3_Sharma_files/figure-latex/unnamed-chunk-13-1.pdf, id=198, 453.695pt 
-x 315.1775pt>
-File: Homework3_Sharma_files/figure-latex/unnamed-chunk-13-1.pdf Graphic file (
-type pdf)
-<use Homework3_Sharma_files/figure-latex/unnamed-chunk-13-1.pdf>
-Package pdftex.def Info: Homework3_Sharma_files/figure-latex/unnamed-chunk-13-1
-.pdf  used on input line 839.
-(pdftex.def)             Requested size: 453.6939pt x 315.17673pt.
-[13]
-<Homework3_Sharma_files/figure-latex/unnamed-chunk-16-1.pdf, id=206, 463.7325pt
- x 316.18124pt>
-File: Homework3_Sharma_files/figure-latex/unnamed-chunk-16-1.pdf Graphic file (
-type pdf)
-<use Homework3_Sharma_files/figure-latex/unnamed-chunk-16-1.pdf>
-Package pdftex.def Info: Homework3_Sharma_files/figure-latex/unnamed-chunk-16-1
-.pdf  used on input line 884.
+.pdf  used on input line 580.
 (pdftex.def)             Requested size: 463.73842pt x 316.18529pt.
-[14pdfTeX warning (ext4): destination with the same identifier (name{table.3}) 
+[8 <./Homework3_Sharma_files/figure-latex/unnamed-chunk-11-1.pdf>] [9 <./Homewo
+rk3_Sharma_files/figure-latex/unnamed-chunk-12-1.pdf>]
+
+Package xcolor Warning: Incompatible color definition on input line 648.
+
+LaTeX Font Info:    Font shape `T1/lmtt/bx/n' in size <10> not available
+(Font)              Font shape `T1/lmtt/b/n' tried instead on input line 650.
+
+Package xcolor Warning: Incompatible color definition on input line 670.
+
+
+Package xcolor Warning: Incompatible color definition on input line 670.
+
+<Homework3_Sharma_files/figure-latex/unnamed-chunk-14-1.pdf, id=164, 453.695pt 
+x 315.1775pt>
+File: Homework3_Sharma_files/figure-latex/unnamed-chunk-14-1.pdf Graphic file (
+type pdf)
+<use Homework3_Sharma_files/figure-latex/unnamed-chunk-14-1.pdf>
+Package pdftex.def Info: Homework3_Sharma_files/figure-latex/unnamed-chunk-14-1
+.pdf  used on input line 672.
+(pdftex.def)             Requested size: 453.6939pt x 315.17673pt.
+[10 <./Homework3_Sharma_files/figure-latex/unnamed-chunk-14-1.pdf>]
+<Homework3_Sharma_files/figure-latex/unnamed-chunk-17-1.pdf, id=183, 463.7325pt
+ x 316.18124pt>
+File: Homework3_Sharma_files/figure-latex/unnamed-chunk-17-1.pdf Graphic file (
+type pdf)
+<use Homework3_Sharma_files/figure-latex/unnamed-chunk-17-1.pdf>
+Package pdftex.def Info: Homework3_Sharma_files/figure-latex/unnamed-chunk-17-1
+.pdf  used on input line 717.
+(pdftex.def)             Requested size: 463.73842pt x 316.18529pt.
+Package atveryend Info: Empty hook `BeforeClearDocument' on input line 734.
+[11pdfTeX warning (ext4): destination with the same identifier (name{table.3}) 
 has been already used, duplicate ignored
 
 \AtBegShi@Output ...ipout \box \AtBeginShipoutBox 
                                                   \fi \fi 
-l.898 \end{table}
-                  <./Homework3_Sharma_files/figure-latex/unnamed-chunk-13-1.pdf
->]
-Package atveryend Info: Empty hook `BeforeClearDocument' on input line 901.
-[15pdfTeX warning (ext4): destination with the same identifier (name{table.4}) 
-has been already used, duplicate ignored
+l.734 \end{document}
+                     <./Homework3_Sharma_files/figure-latex/unnamed-chunk-17-1.
+pdf>] [12pdfTeX warning (ext4): destination with the same identifier (name{tabl
+e.4}) has been already used, duplicate ignored
 
 \AtBegShi@Output ...ipout \box \AtBeginShipoutBox 
                                                   \fi \fi 
-l.901 \end{document}
-                     <./Homework3_Sharma_files/figure-latex/unnamed-chunk-16-1.
-pdf>]
-Package atveryend Info: Empty hook `AfterLastShipout' on input line 901.
+l.734 \end{document}
+                    ]
+Package atveryend Info: Empty hook `AfterLastShipout' on input line 734.
 (./Homework3_Sharma.aux)
-Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 901.
-Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 901.
+Package atveryend Info: Executing hook `AtVeryEndDocument' on input line 734.
+Package atveryend Info: Executing hook `AtEndAfterFileList' on input line 734.
 Package rerunfilecheck Info: File `Homework3_Sharma.out' has not changed.
-(rerunfilecheck)             Checksum: 9F344C7E65AFA66BB2DF0FDBDD41D908;8178.
+(rerunfilecheck)             Checksum: ECB3E349EB8D9A1417E31561C269D33A;7421.
 
 LaTeX Warning: There were multiply-defined labels.
 
-Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 901.
+Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 734.
  ) 
 Here is how much of TeX's memory you used:
- 14896 strings out of 492616
- 220343 string characters out of 6129482
- 357081 words of memory out of 5000000
- 18449 multiletter control sequences out of 15000+600000
- 46966 words of font info for 81 fonts, out of 8000000 for 9000
+ 14851 strings out of 492616
+ 218877 string characters out of 6129482
+ 352538 words of memory out of 5000000
+ 18401 multiletter control sequences out of 15000+600000
+ 46616 words of font info for 85 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
- 32i,9n,38p,2846b,455s stack positions out of 5000i,500n,10000p,200000b,80000s
-{/usr/local/texlive/2019/texmf-dist/fonts/enc/dvips/lm/lm-ts1.enc}{/usr/local
-/texlive/2019/texmf-dist/fonts/enc/dvips/lm/lm-ec.enc}</usr/local/texlive/2019/
+ 32i,9n,38p,2846b,381s stack positions out of 5000i,500n,10000p,200000b,80000s
+{/usr/local/texlive/2019/texmf-dist/fonts/enc/dvips/lm/lm-ec.enc}{/usr/local/
+texlive/2019/texmf-dist/fonts/enc/dvips/lm/lm-ts1.enc}</usr/local/texlive/2019/
 texmf-dist/fonts/type1/public/lm/lmbx10.pfb></usr/local/texlive/2019/texmf-dist
 /fonts/type1/public/lm/lmbx12.pfb></usr/local/texlive/2019/texmf-dist/fonts/typ
 e1/public/lm/lmr10.pfb></usr/local/texlive/2019/texmf-dist/fonts/type1/public/l
 m/lmr17.pfb></usr/local/texlive/2019/texmf-dist/fonts/type1/public/lm/lmri12.pf
 b></usr/local/texlive/2019/texmf-dist/fonts/type1/public/lm/lmtk10.pfb></usr/lo
-cal/texlive/2019/texmf-dist/fonts/type1/public/lm/lmtt10.pfb></usr/local/texliv
-e/2019/texmf-dist/fonts/type1/public/lm/lmtti10.pfb>
-Output written on Homework3_Sharma.pdf (15 pages, 367575 bytes).
+cal/texlive/2019/texmf-dist/fonts/type1/public/lm/lmtt10.pfb>
+Output written on Homework3_Sharma.pdf (12 pages, 320177 bytes).
 PDF statistics:
- 284 PDF objects out of 1000 (max. 8388607)
- 226 compressed objects within 3 object streams
- 51 named destinations out of 1000 (max. 500000)
- 8347 words of extra memory for PDF output out of 10000 (max. 10000000)
+ 241 PDF objects out of 1000 (max. 8388607)
+ 193 compressed objects within 2 object streams
+ 46 named destinations out of 1000 (max. 500000)
+ 8329 words of extra memory for PDF output out of 10000 (max. 10000000)
 
