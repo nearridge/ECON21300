@@ -1,4 +1,4 @@
-This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019) (preloaded format=pdflatex 2019.5.8)  19 MAY 2020 20:55
+This is pdfTeX, Version 3.14159265-2.6-1.40.20 (TeX Live 2019) (preloaded format=pdflatex 2019.5.8)  19 MAY 2020 20:58
 entering extended mode
  restricted \write18 enabled.
  %&-line parsing enabled.
@@ -925,11 +925,11 @@ Package rerunfilecheck Info: File `Homework3_Sharma.out' has not changed.
 Package atveryend Info: Empty hook `AtVeryVeryEnd' on input line 661.
  ) 
 Here is how much of TeX's memory you used:
- 14411 strings out of 492616
- 213680 string characters out of 6129482
+ 14413 strings out of 492616
+ 213702 string characters out of 6129482
  343277 words of memory out of 5000000
  17968 multiletter control sequences out of 15000+600000
- 46215 words of font info for 83 fonts, out of 8000000 for 9000
+ 46298 words of font info for 84 fonts, out of 8000000 for 9000
  1141 hyphenation exceptions out of 8191
  32i,9n,38p,2846b,439s stack positions out of 5000i,500n,10000p,200000b,80000s
 {/usr/local/texlive/2019/texmf-dist/fonts/enc/dvips/lm/lm-ts1.enc}{/usr/local
@@ -939,7 +939,7 @@ texmf-dist/fonts/type1/public/lm/lmbx10.pfb></usr/local/texlive/2019/texmf-dist
 e1/public/lm/lmr10.pfb></usr/local/texlive/2019/texmf-dist/fonts/type1/public/l
 m/lmr17.pfb></usr/local/texlive/2019/texmf-dist/fonts/type1/public/lm/lmri12.pf
 b></usr/local/texlive/2019/texmf-dist/fonts/type1/public/lm/lmtt10.pfb>
-Output written on Homework3_Sharma.pdf (12 pages, 322355 bytes).
+Output written on Homework3_Sharma.pdf (12 pages, 322364 bytes).
 PDF statistics:
  267 PDF objects out of 1000 (max. 8388607)
  216 compressed objects within 3 object streams
