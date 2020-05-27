@@ -22,9 +22,15 @@ library(caret)
 ```{r}
 training <- read_csv(here("Homework 4", "Data", "training_data_final.csv"))
 
-trainingrf <- train(MedianMonthlyHousingCosts ~ ., 
-      data = training, 
-      method = "rf")
+selection <- training %>%
+  select(MedianHouseholdIncome, MedianMonthlyHousingCosts)
+
+ggplot(selection, mapping = aes(x = MedianHouseholdIncome, y = MedianMonthlyHousingCosts)) +
+  geom_point()
+
+trainingrf <- train(MedianMonthlyHousingCosts ~ MedianHouseholdIncome, 
+      data = selection, 
+      method = "lm")
 
 trainingrf
 ```
