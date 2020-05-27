@@ -1,0 +1,30 @@
+---
+title: "Homework 4: OLS vs Random Forest"
+subtitle: "A battle for the ages"
+author: "Neeraj Sharma"
+date: "06/01/2020"
+output: pdf_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = FALSE, 
+                      message = FALSE)
+```
+
+```{r}
+library(tidyverse)
+library(here)
+library(knitr)
+library(kableExtra)
+library(caret)
+```
+
+```{r}
+training <- read_csv(here("Homework 4", "Data", "training_data_final.csv"))
+
+trainingrf <- train(MedianMonthlyHousingCosts ~ ., 
+      data = training, 
+      method = "rf")
+
+trainingrf
+```

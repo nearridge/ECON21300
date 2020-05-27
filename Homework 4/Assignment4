@@ -1,0 +1,58 @@
+OLS and random forest go toe-to-toe
+Final problem set - Econ 213
+Spring 2020
+Due June 1, 11:59 pm!!
+
+We are supplying you three data sets on neighborhood-level housing prices.  More info on the variables accompanies the data sets. 
+
+Data set 1 is the training data set. It includes the variable we want to predict (median housing cost) and a bunch of covariates.
+
+Data set 2 is the first prediction data set.  It is drawn from the same original data as data set 1 (although there is no overlap in the actual samples drawn, i.e. data sets 1 and 2 were created by sampling without replacement).  It does not include median housing cost…you need to estimate those.
+
+Data set 3 – we are not so sure what’s going on with that.  It was supposed to similar to data sets 1 and 2, but we get the sense that something went wrong.  Still, we need estimates of median housing costs in that data set also.
+
+Note, that you will be graded both for your logic and explanation and the accuracy of your predictions.  Directions will follow from the TAs as to exactly what to turn in and in what form
+
+1) OLS - 10 points
+
+Using OLS regression techniques, come up with your best prediction for median housing costs in data set 2, the first prediction data set.  (You will turn in these predictions.)
+
+a. Describe both your model (as in, the regression you ran) and the thinking that underlay the choices of what to put in your model. (5 points)
+
+b. Guess what your performance will be in terms of R-squared and beta, when, using data set 2 we run a regression of the form:
+
+y = α + βeta*y-hat
+
+where  y-hat is your predicted housing costs and y is the true housing costs. We’d like numeric answers for both the r-squared and beta. Emphasize the logic of why you guessed your guesses. (5 points)
+
+2. Random Forest - 15 points
+
+Using random forest techniques, come up with your best prediction for median housing costs In data set 2..
+
+a.c.Describe both your model (as in, the regression you ran) and the thinking that underlay the choices of what to put in your model. (5 points)
+
+b. Guess what your performance will be in terms of R-squared and beta, when, using data set 2 we run a regression of the form:
+
+y = α + βeta*y-hat
+
+where  y-hat is your predicted housing costs and y is the true housing costs. We’d like numeric answers for both the r-squared and beta. Emphasize the logic of why you guessed your guesses. (5 points)
+
+c. Which do you think will do better in out-of-sample predictions, random forest or OLS? (5 points)
+
+3) What happens when your prediction data doesn’t mirror your test data?
+
+OLS - 10 points
+
+Using regression techniques, come up with your best predictions for data set 3.
+
+a. Describe your modeling approach and the thinking that underlies your choices. Speciﬁcally, make sure you address what you did to go from a good prediction in-sample (training data) to a good prediction out-of-sample (data set 3). (10 points)
+
+Random Forest - 15 points
+
+Using random forest techniques, come up with your best predictions for data set 3
+
+b. Describe your modeling approach and the thinking that underlies your choices. Speciﬁcally, make sure you address what you did to go from a good prediction in-sample (training data) to a good prediction out-of-sample (data set 3). (5 points)
+
+c. Which do you think will give better out-of-sample predictions now, random forest or OLS? (5 points)
+
+d. Explain why answering this question is harder with random forest than with OLS. (5 points)
