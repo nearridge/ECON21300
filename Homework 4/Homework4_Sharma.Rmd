@@ -8,7 +8,8 @@ output: pdf_document
 
 ```{r setup, include=FALSE}
 knitr::opts_chunk$set(echo = FALSE, 
-                      message = FALSE)
+                      message = FALSE, 
+                      warning = FALSE)
 ```
 
 ```{r}
@@ -20,37 +21,191 @@ library(broom)
 library(kableExtra)
 library(caret)
 library(glmnet)
-
-is.decimal <- function(x) {
-  start <- 1
-  end <- length(x) + 1
-  while (start < end) {
-    y <- x[start]
-    test <- floor(y)
-    if (y == test) {
-      if (start == 1) {
-        result = TRUE
-      } else{
-        result <- c(result, FALSE)
-      }
-    } else{
-      if (start == 1) {
-        result = TRUE
-      } else{
-        result <- c(result, TRUE)
-      }
-    }
-    start <- start + 1
-  }
-  return(result)
-}
+library(patchwork)
 ```
 
 ```{r cache = TRUE}
+# Function that replaces an NA value with the mean of the col.
+NA2mean <- function(x) replace(x, is.na(x), mean(x, na.rm = TRUE))
+plus2num <- function(x) replace(x, str_detect_all(x, "+"), str_replace_all(x, "+", ""))
+
+
 training <- read_csv(here("Homework 4", "Data", "training_data_final.csv"), na = c("-", "N"))
 data1 <- read_csv(here("Homework 4", "Data", "testing_data_1_final.csv"), na = c("-", "N"))
 data2 <- read_csv(here("Homework 4", "Data", "testing_data_2_final.csv"), na = c("-", "N"))
+
+# Overwrite datasets with missing data with mean value. NA2mean applied. 
+training <- replace(training, TRUE, map(training, NA2mean))
+data1 <- replace(data1, TRUE, map(data1, NA2mean))
+data2 <- replace(data2, TRUE, map(data2, NA2mean))
+data2 <- mutate_if(as_tibble(data2), is.character, str_replace_all, pattern = "[+]", replacement ="") %>%
+  mutate_if(is.character, as.double)
 ```
+
+## 1) OLS prediction for median housing costs in data set 2
+
+In order to effectively apply the model I train on the training dataset to experimental dataset 2, I first need to substantiate my belief that the two datasets are similar. In order to accomplish this, I compare the distribution of several variable classes that appear in both datasets. 
+
+```{r}
+race_demos <- c("WhiteOcc", "BlackOcc", "AsianOcc", "NativeOcc", "PacificOcc", "HispanicOcc", "MultipleOcc", "OtherOcc", "random_id")
+age_demos <- c("Under35YrsOcc", "X35to44YrsOcc", "X45to54YrsOcc", "X55to64YrsOcc", "X65to74YrsOcc", "X75to84YrsOcc", "X85OverOcc", "random_id")
+educ_demos <- c("LessHSOcc", "HSOcc", "CollegeOcc", "BAOcc", "random_id")
+income_demos <- c("IncomeLess5000", "Income5000_9999", "Income10000_14999", "Income15000_19999", "Income20000_24999", "Income25000_3499", "Income35000_49999", "Income50000_74999", "Income75000_99999", "Income100000_149999", "IncomeMore150000",  "random_id")
+
+race_labels <-  c("White", "Black", "Asian", "Native","Pacific", "Hispanic", "Multiple", "Other")
+t_race_selection <- training %>% 
+  select(race_demos) %>%
+  pivot_longer(-random_id, names_to = "var", values_to = "value") %>%
+  mutate(type = "Testing",
+         var = factor(var, levels = race_demos[-9], labels = race_labels))
+d1_race_selection <- data1 %>% 
+  select(race_demos) %>%
+  pivot_longer(-random_id, names_to = "var", values_to = "value") %>%
+  mutate(type = "Data 1",
+         var = factor(var, levels = race_demos[-9], labels = race_labels))
+d2_race_selection <- data2 %>% 
+  select(race_demos) %>%
+  pivot_longer(-random_id, names_to = "var", values_to = "value") %>%
+  mutate(type = "Data 2",
+         var = factor(var, levels = race_demos[-9], labels = race_labels))
+race_compare_d1 <- bind_rows(t_race_selection, d1_race_selection)
+race_compare_d2 <- bind_rows(t_race_selection, d2_race_selection)
+
+age_labels <- c("<35", "35-44", "45-54", "55-64", "65-74", "75-84", "85<")
+t_age_selection <- training %>% 
+  select(age_demos) %>%
+  pivot_longer(-random_id, names_to = "var", values_to = "value") %>%
+  mutate(type = "Testing", 
+         var = factor(var, levels = age_demos[-8], labels = age_labels))
+d1_age_selection <- data1 %>% 
+  select(age_demos) %>%
+  pivot_longer(-random_id, names_to = "var", values_to = "value") %>%
+  mutate(type = "Data 1", 
+         var = factor(var, levels = age_demos[-8], labels = age_labels))
+d2_age_selection <- data2 %>% 
+  select(age_demos) %>%
+  pivot_longer(-random_id, names_to = "var", values_to = "value") %>%
+  mutate(type = "Data 2", 
+         var = factor(var, levels = age_demos[-8], labels = age_labels))
+age_compare_d1 <- bind_rows(t_age_selection, d1_age_selection)
+age_compare_d2 <- bind_rows(t_age_selection, d2_age_selection)
+
+educ_labels <- c("< HS", "HS", "College", "BA")
+t_educ_selection <- training %>% 
+  select(educ_demos) %>%
+  pivot_longer(-random_id, names_to = "var", values_to = "value") %>%
+  mutate(type = "Testing", 
+         var = factor(var, levels = educ_demos[-5], labels = educ_labels))
+d1_educ_selection <- data1 %>% 
+  select(educ_demos) %>%
+  pivot_longer(-random_id, names_to = "var", values_to = "value") %>%
+  mutate(type = "Data 1", 
+         var = factor(var, levels = educ_demos[-5], labels = educ_labels))
+d2_educ_selection <- data2 %>% 
+  select(educ_demos) %>%
+  pivot_longer(-random_id, names_to = "var", values_to = "value") %>%
+  mutate(type = "Data 2", 
+         var = factor(var, levels = educ_demos[-5], labels = educ_labels))
+educ_compare_d1 <- bind_rows(t_educ_selection, d1_educ_selection)
+educ_compare_d2 <- bind_rows(t_educ_selection, d2_educ_selection)
+
+income_labs <- c("<5k", "5k-9k", "10k-14k", "15k-19k", "20k-24k", "25k-34k", "35k-49k", "50k-74k", "75k-99k", "100k-149k", "150k<")
+
+t_income_selection <- training %>% 
+  select(income_demos) %>%
+  pivot_longer(-random_id, names_to = "var", values_to = "value") %>%
+  mutate(type = "Testing",
+         var = factor(var, levels = income_demos[-12], labels = income_labs))
+d1_income_selection <- data1 %>%
+  select(income_demos) %>%
+  pivot_longer(-random_id, names_to = "var", values_to = "value") %>%
+  mutate(type = "Data 1",
+         var = factor(var, levels = income_demos[-12], labels = income_labs))
+d2_income_selection <- data2 %>%
+  select(income_demos) %>%
+  pivot_longer(-random_id, names_to = "var", values_to = "value") %>%
+  mutate(type = "Data 2",
+         var = factor(var, levels = income_demos[-12], labels = income_labs))
+income_compare_d1 <- bind_rows(t_income_selection, d1_income_selection)
+income_compare_d2 <- bind_rows(t_income_selection, d2_income_selection)
+
+d11 <- ggplot() +
+  geom_boxplot(race_compare_d1, mapping = aes(x = var, y = value, fill = type)) +
+  labs(title = "Distribution of Race",
+       x = "Race",
+       y = "Percent Distribution") +
+  theme(legend.position = "none")
+
+d12 <- ggplot() +
+  geom_boxplot(age_compare_d1, mapping = aes(x = var, y = value, fill = type)) +
+  labs(title = "Distribution of Age",
+       x = "Age") +
+  theme(legend.position = "none",
+        axis.text.y=element_blank(),
+        axis.title.y=element_blank())
+
+d13 <- ggplot() +
+  geom_boxplot(educ_compare_d1, mapping = aes(x = var, y = value, fill = type)) +
+  labs(title = "Distribution of Education",
+       x = "Education") +
+  theme(legend.title = element_blank(),
+        legend.direction = "horizontal",
+        axis.text.y=element_blank(),
+        axis.title.y=element_blank(),
+        legend.position = c(0.5, -0.18))
+
+d14 <- ggplot() +
+  geom_boxplot(income_compare_d1, mapping = aes(x = var, y = value, fill = type)) +
+  labs(title = "Distribution of Income",
+       x = "Income",
+       y = "Percent Distribution") +
+  theme(legend.position = "none", 
+        axis.text.x = element_text(angle = 35, hjust = 1))
+
+d21 <- ggplot() +
+  geom_boxplot(race_compare_d2, mapping = aes(x = var, y = value, fill = type)) +
+  labs(title = "Distribution of Race",
+       x = "Race",
+       y = "Percent Distribution") +
+  theme(legend.position = "none")
+
+d22 <- ggplot() +
+  geom_boxplot(age_compare_d2, mapping = aes(x = var, y = value, fill = type)) +
+  labs(title = "Distribution of Age",
+       x = "Age") +
+  theme(legend.position = "none",
+        axis.text.y=element_blank(),
+        axis.title.y=element_blank())
+
+d23 <- ggplot() +
+  geom_boxplot(educ_compare_d2, mapping = aes(x = var, y = value, fill = type)) +
+  labs(title = "Distribution of Education",
+       x = "Education") +
+  theme(legend.title = element_blank(),
+        axis.text.y=element_blank(),
+        axis.title.y=element_blank(),
+        legend.direction = "horizontal",
+        legend.position = c(0.5, -0.18))
+
+d24 <- ggplot() +
+  geom_boxplot(income_compare_d2, mapping = aes(x = var, y = value, fill = type)) +
+  labs(title = "Distribution of Income",
+       x = "Income",
+       y = "Percent Distribution") +
+  theme(axis.text.x = element_text(angle = 35, hjust = 1)) +
+  theme(legend.position = "none")
+```
+
+```{r fig.height = 6}
+(d11 + d12)/(d14 + d13) +
+  plot_annotation(title = "Testing vs Data 2")
+```
+
+Across the board, data set 2 and the training set look very similar. This means that a model I train on the entirety of the training dataset will be able to be applied to data set 2 without much trouble. 
+
+## a. Describe both the regression you ran and the thinking that underlay the choices of what to put in your model.
+
+I approach creating my OLS model two ways. The first way was through using a LASSO regression to understand what variables function as effective predictors, and the second approach was to intuitively reason which variables will contribute to housing prices. In Eric's Office Hours, numerous students discussed the pros and cons of LASSO, and I was interested in trying it out to improve my skills and to identify any variables that might unexpectadly function as good predictors. 
 
 ```{r}
 training_MedianMonthlyHousingCosts <- training %>%
@@ -58,17 +213,14 @@ training_MedianMonthlyHousingCosts <- training %>%
   mutate(MedianMonthlyHousingCosts = as.numeric(MedianMonthlyHousingCosts)) %>%
   pull()
 
-training_allvars <- training %>%
-  select(-MedianMonthlyHousingCosts)
+training_allvars <- model.matrix(MedianMonthlyHousingCosts~., training)[,-175]
 
 lasso1 <- glmnet(training_allvars, training_MedianMonthlyHousingCosts, family = "gaussian")
-lasso2 <- train(training %>% select(-MedianMonthlyHousingCosts), training %>% select(MedianMonthlyHousingCosts) %>% pull(), method = "glmnet")
-  
+
+coef(lasso2)
 ```
 
 ```{r}
-
-
 selection <- training %>%
   select(MedianHouseholdIncome, 
          MeanHouseholdIncome, 
@@ -110,19 +262,6 @@ ggplot(selection, mapping = aes(x = WhiteOcc, y = MedianMonthlyHousingCosts)) +
        x = "White Occupancy Rate",
        y = "Median Monthly Housing Cost")
 
-trainingols <- train(MedianMonthlyHousingCosts ~ .,
-      data = selection,
-      method = "lm")
-summary(trainingols)
-
-
-trainingrf <- train(MedianMonthlyHousingCosts ~ .,
-      data = selection,
-      method = "rf",
-      trControl = trainControl(method = "oob"))
-trainingrf$finalModel
-randomForest::varImpPlot(trainingrf$finalModel)
-
 # for OLS, as few variables as possible that comunicate well (4-5-15 variables max). Test out seeral models. 
 
 # We can use lasso to select variables for the OLS for dataset one as long as you justify that the sample set is similar to the first dataset but if you were to apply it to the second data set you would get bad answers. You can justify that the training and dataset 1 look the same by just doing some plots of variables to show they look similar. You need to theoretically justify a different model for the selection of variables to use in the second data set with OLS because it's fucked up. Think about what'd make sense and come up with 3-4-5 stories that are possible for dataset number 2. Look at what makes test set 2 different from training set and make sure it doesn't skew torwards those highly represented areas. 
@@ -139,10 +278,49 @@ randomForest::varImpPlot(trainingrf$finalModel)
 ```
 
 ```{r}
-trainingrf2 <- train(MedianMonthlyHousingCosts ~ .,
-      data = training,
-      method = "rf",
-      ntree = 500)
-trainingrf2$finalModel
-randomForest::varImpPlot(trainingrf2$finalModel)
+
 ```
+
+## b. Guess what your performance will be in terms of R-squared and beta, when, using data set 2 we run a regression of the form:
+
+y = a + beta*y-hat
+
+where  y-hat is your predicted housing costs and y is the true housing costs. We’d like numeric answers for both the r-squared and beta. Emphasize the logic of why you guessed your guesses. (5 points)
+
+# 2) Random Forest prediction for median housing costs in data set 2
+
+Using random forest techniques, come up with your best prediction for median housing costs In data set 2.
+
+## a.Describe both your model (as in, the regression you ran) and the thinking that underlay the choices of what to put in your model. (5 points)
+
+For my random forest, I predicted the model on the training dataset over night in a separate R script with Median Housing Cost on the left side an all other predictors on the right side. I then saved both the random seed and output of that process to my repository and then load them here.
+
+I chose to run my random forest over all predictors instead of a small subset of predictors because of the ensamble method behind random forests. An issue with estimating decision trees is that any individual split can be critical and suddenly drive the output of the tree to a locally (but not globally) optimal level. When you run only one tree, random chance and a small sample size mean that it's possible to rely extremely heavily on a single predictor or overfit the model. Random forests control for this by aggregating trees, ensuring that only features that repeadidly emerge as important are considered as such. This means that it's theoretically legitimate to run the model over all regressors, as those with more predictive ability overall are selected equally as those that lack predictive ability. 
+
+```{r}
+load("~/Desktop/ECON21300/Homework 4/Saved/seed_trainingrf.RData")
+load("~/Desktop/ECON21300/Homework 4/Saved/trainingrf.RData")
+load("~/Desktop/ECON21300/Homework 4/Saved/trainingrf_oob.RData")
+
+trainingrf$finalModel
+randomForest::varImpPlot(trainingrf$finalModel)
+```
+
+## b. Guess what your performance will be in terms of R-squared and beta, when, using data set 2 we run a regression of the form:
+
+y = a + beta*y-hat
+
+where y-hat is your predicted housing costs and y is the true housing costs. We’d like numeric answers for both the r-squared and beta. Emphasize the logic of why you guessed your guesses. (5 points)
+
+## c. Which do you think will do better in out-of-sample predictions, random forest or OLS? (5 points)
+
+# 3) What happens when your prediction data doesn’t mirror your test data?
+
+In comparision to data set 2, data set 3 looks very different than the training dataset.
+
+```{r fig.height = 6}
+(d21 + d22)/(d24 + d23) +
+  plot_annotation(title = "Testing vs Data 3")
+```
+
+If I were to run the model I define over the entire training data set and use to solve the first two problems on data set 3, I will not draw effective conslusions as the underlying samples do not overlap. I need to train a model on a subset of the training data frame that resembles data set 3 in order to accurately effectively predict the median housing costs of homes in data set 3.

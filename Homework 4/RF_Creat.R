@@ -13,11 +13,22 @@ NA2mean <- function(x) replace(x, is.na(x), mean(x, na.rm = TRUE))
 training <- replace(training, TRUE, map(training, NA2mean))
 
 # Train the random forest. Goodnight see you tomorrow.
-trainingrf <- train(MedianMonthlyHousingCosts ~ .,
+trainingrf_oob <- train(MedianMonthlyHousingCosts ~ .,
                     data = training,
                     method = "rf",
                     ntree = 600,
                     trControl = trainControl(method = "oob"))
+
+# View model results
+trainingrf_oob$finalModel
+
+# View important variables in the model
+randomForest::varImpPlot(trainingrf_oob$finalModel)
+
+trainingrf <- train(MedianMonthlyHousingCosts ~ .,
+                        data = training,
+                        method = "rf",
+                        ntree = 600)
 
 # View model results
 trainingrf$finalModel
@@ -26,5 +37,6 @@ trainingrf$finalModel
 randomForest::varImpPlot(trainingrf$finalModel)
 
 # Save the seed and random forest so I don't need to do this ever again. 
+save(trainingrf_oob, file = here("Homework 4", "Saved", "trainingrf_oob.RData"))
 save(trainingrf, file = here("Homework 4", "Saved", "trainingrf.RData"))
 save(current_seed, file = here("Homework 4", "Saved", "seed_trainingrf.RData"))
