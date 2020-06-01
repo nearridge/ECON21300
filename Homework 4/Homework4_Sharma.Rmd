@@ -14,23 +14,135 @@ knitr::opts_chunk$set(echo = FALSE,
 ```{r}
 library(tidyverse)
 library(here)
+library(magrittr)
 library(knitr)
+library(broom)
 library(kableExtra)
 library(caret)
+library(glmnet)
+
+is.decimal <- function(x) {
+  start <- 1
+  end <- length(x) + 1
+  while (start < end) {
+    y <- x[start]
+    test <- floor(y)
+    if (y == test) {
+      if (start == 1) {
+        result = TRUE
+      } else{
+        result <- c(result, FALSE)
+      }
+    } else{
+      if (start == 1) {
+        result = TRUE
+      } else{
+        result <- c(result, TRUE)
+      }
+    }
+    start <- start + 1
+  }
+  return(result)
+}
+```
+
+```{r cache = TRUE}
+training <- read_csv(here("Homework 4", "Data", "training_data_final.csv"), na = c("-", "N"))
+data1 <- read_csv(here("Homework 4", "Data", "testing_data_1_final.csv"), na = c("-", "N"))
+data2 <- read_csv(here("Homework 4", "Data", "testing_data_2_final.csv"), na = c("-", "N"))
 ```
 
 ```{r}
-training <- read_csv(here("Homework 4", "Data", "training_data_final.csv"))
+training_MedianMonthlyHousingCosts <- training %>%
+  select(MedianMonthlyHousingCosts) %>%
+  mutate(MedianMonthlyHousingCosts = as.numeric(MedianMonthlyHousingCosts)) %>%
+  pull()
+
+training_allvars <- training %>%
+  select(-MedianMonthlyHousingCosts)
+
+lasso1 <- glmnet(training_allvars, training_MedianMonthlyHousingCosts, family = "gaussian")
+lasso2 <- train(training %>% select(-MedianMonthlyHousingCosts), training %>% select(MedianMonthlyHousingCosts) %>% pull(), method = "glmnet")
+  
+```
+
+```{r}
+
 
 selection <- training %>%
-  select(MedianHouseholdIncome, MedianMonthlyHousingCosts)
+  select(MedianHouseholdIncome, 
+         MeanHouseholdIncome, 
+         WhiteOcc, 
+         CollegeOcc, BAOcc, 
+         MedianMonthlyHousingCosts) %>%
+  mutate(MedianHouseholdIncome = as.numeric(MedianHouseholdIncome),
+         MeanHouseholdIncome = as.numeric(MeanHouseholdIncome),
+         WhiteOcc = as.numeric(WhiteOcc)/100,
+         CollegeOcc = as.numeric(CollegeOcc)/100,
+         BAOcc = as.numeric(BAOcc)/100) %>%
+  drop_na()
+
+selection
+
+# There are a number of entries that do not have MedianHouseholdIncome data. 
+# Overwhelmingly, these entries also are zeroed out for Median Monthly Housing Costs
+# selection %>% 
+#   filter(is.na(MedianHouseholdIncome)) %>%
+#   count(MedianMonthlyHousingCosts) %>%
+#   kable("latex", booktabs = T, 
+#         caption = "Median Monthly Housing Costs for Entries With No Data on Median Household Income")
 
 ggplot(selection, mapping = aes(x = MedianHouseholdIncome, y = MedianMonthlyHousingCosts)) +
-  geom_point()
+  geom_point(alpha = 0.1) +
+  geom_smooth(method = "lm") +
+  scale_x_continuous(labels = scales::dollar) +
+  scale_y_continuous(labels = scales::dollar) +
+  labs(title = "Median Monthly Housing Cost by Median Household Income",
+       x = "Median Household Income",
+       y = "Median Monthly Housing Cost")
 
-trainingrf <- train(MedianMonthlyHousingCosts ~ MedianHouseholdIncome, 
-      data = selection, 
+ggplot(selection, mapping = aes(x = WhiteOcc, y = MedianMonthlyHousingCosts)) +
+  geom_point(alpha = 0.1) +
+  geom_smooth(method = "lm") +
+  scale_x_continuous(labels = scales::percent) +
+  scale_y_continuous(labels = scales::dollar) +
+  labs(title = "Median Monthly Housing Cost by White Occupancy Rate",
+       x = "White Occupancy Rate",
+       y = "Median Monthly Housing Cost")
+
+trainingols <- train(MedianMonthlyHousingCosts ~ .,
+      data = selection,
       method = "lm")
+summary(trainingols)
 
-trainingrf
+
+trainingrf <- train(MedianMonthlyHousingCosts ~ .,
+      data = selection,
+      method = "rf",
+      trControl = trainControl(method = "oob"))
+trainingrf$finalModel
+randomForest::varImpPlot(trainingrf$finalModel)
+
+# for OLS, as few variables as possible that comunicate well (4-5-15 variables max). Test out seeral models. 
+
+# We can use lasso to select variables for the OLS for dataset one as long as you justify that the sample set is similar to the first dataset but if you were to apply it to the second data set you would get bad answers. You can justify that the training and dataset 1 look the same by just doing some plots of variables to show they look similar. You need to theoretically justify a different model for the selection of variables to use in the second data set with OLS because it's fucked up. Think about what'd make sense and come up with 3-4-5 stories that are possible for dataset number 2. Look at what makes test set 2 different from training set and make sure it doesn't skew torwards those highly represented areas. 
+
+# You can sorta do whatever you want for RFs.
+
+
+# There is an educated way to guess alpha (how much systematically your predictions are above or below the actual values) for the second dataset. 
+
+# Note the second dataset had a weird selection of variables. It's not fundamentally flawed but they just picked some bad shit out. 
+
+
+# Learn about lasso: https://faculty.marshall.usc.edu/gareth-james/ISL/ISLR%20Seventh%20Printing.pdf
+```
+
+```{r}
+trainingrf2 <- train(MedianMonthlyHousingCosts ~ .,
+      data = training,
+      method = "rf",
+      ntree = 500)
+trainingrf2$finalModel
+randomForest::varImpPlot(trainingrf2$finalModel)
 ```
