@@ -4,6 +4,8 @@ subtitle: "A battle for the ages"
 author: "Neeraj Sharma"
 date: "06/01/2020"
 output: pdf_document
+header-includes: 
+   - \usepackage{wrapfig}
 ---
 
 ```{r setup, include=FALSE}
@@ -17,11 +19,14 @@ library(tidyverse)
 library(here)
 library(magrittr)
 library(knitr)
+library(glue)
 library(broom)
 library(kableExtra)
 library(caret)
 library(glmnet)
 library(patchwork)
+load("~/Desktop/ECON21300/Homework 4/Saved/seed_trainingrf.RData")
+set.seed(current_seed)
 ```
 
 ```{r cache = TRUE}
@@ -29,105 +34,150 @@ library(patchwork)
 NA2mean <- function(x) replace(x, is.na(x), mean(x, na.rm = TRUE))
 plus2num <- function(x) replace(x, str_detect_all(x, "+"), str_replace_all(x, "+", ""))
 
-
 training <- read_csv(here("Homework 4", "Data", "training_data_final.csv"), na = c("-", "N"))
 data1 <- read_csv(here("Homework 4", "Data", "testing_data_1_final.csv"), na = c("-", "N"))
 data2 <- read_csv(here("Homework 4", "Data", "testing_data_2_final.csv"), na = c("-", "N"))
 
-# Overwrite datasets with missing data with mean value. NA2mean applied. 
+# Convert all col types to double then overwrite values with missing data with mean value of col.
+training <- mutate_if(as_tibble(training), is.character, str_replace_all, pattern = "[+]", replacement ="") %>%
+  mutate_if(is.character, as.double)
+training <- training %>%
+  mutate(pctRetiringAge = X65to74YrsOcc + X75to84YrsOcc + X85OverOcc,
+#        pctUnemployed = PopUnemployed / PopLaborForce,
+         pocOcc = BlackOcc + NativeOcc + PacificOcc + AsianOcc + OtherOcc + HispanicOcc,
+         pocOwnerOcc = BlackOwnerOcc + NativeOwnerOcc + PacificOwnerOcc + AsianOwnerOcc + OtherOwnerOcc + HispanicOwnerOcc,
+         crowding = NumFamilies / OccHousingUnits,
+         unemp = PopUnemployed/PopNotLaborForce,
+         snap = PopOnFoodStampsSNAP / PopCivilian)
 training <- replace(training, TRUE, map(training, NA2mean))
+
+data1 <- mutate_if(as_tibble(data1), is.character, str_replace_all, pattern = "[+]", replacement ="") %>%
+  mutate_if(is.character, as.double)
+data1 <- data1 %>%
+  mutate(pctRetiringAge = X65to74YrsOcc + X75to84YrsOcc + X85OverOcc,
+#        pctUnemployed = PopUnemployed / PopLaborForce,
+         pocOcc = BlackOcc + NativeOcc + PacificOcc + AsianOcc + OtherOcc + HispanicOcc,
+         pocOwnerOcc = BlackOwnerOcc + NativeOwnerOcc + PacificOwnerOcc + AsianOwnerOcc + OtherOwnerOcc + HispanicOwnerOcc,
+         crowding = NumFamilies / OccHousingUnits,
+         unemp = PopUnemployed/PopNotLaborForce,
+         snap = PopOnFoodStampsSNAP / PopCivilian)
 data1 <- replace(data1, TRUE, map(data1, NA2mean))
-data2 <- replace(data2, TRUE, map(data2, NA2mean))
+
 data2 <- mutate_if(as_tibble(data2), is.character, str_replace_all, pattern = "[+]", replacement ="") %>%
   mutate_if(is.character, as.double)
+data2 <- data2 %>%
+  mutate(pctRetiringAge = X65to74YrsOcc + X75to84YrsOcc + X85OverOcc,
+#        pctUnemployed = PopUnemployed / PopLaborForce,
+         pocOcc = BlackOcc + NativeOcc + PacificOcc + AsianOcc + OtherOcc + HispanicOcc,
+         pocOwnerOcc = BlackOwnerOcc + NativeOwnerOcc + PacificOwnerOcc + AsianOwnerOcc + OtherOwnerOcc + HispanicOwnerOcc,
+         crowding = NumFamilies / OccHousingUnits,
+         unemp = PopUnemployed/PopNotLaborForce,
+         snap = PopOnFoodStampsSNAP / PopCivilian)
+data2 <- replace(data2, TRUE, map(data2, NA2mean))
 ```
 
 ## 1) OLS prediction for median housing costs in data set 2
 
-In order to effectively apply the model I train on the training dataset to experimental dataset 2, I first need to substantiate my belief that the two datasets are similar. In order to accomplish this, I compare the distribution of several variable classes that appear in both datasets. 
+In order to effectively apply the model I train on the training data set to experimental data set 2, I first need to substantiate my belief that the two data sets are similar. In order to accomplish this, I compare the distribution of several variable classes that appear in both data sets. 
 
-```{r}
-race_demos <- c("WhiteOcc", "BlackOcc", "AsianOcc", "NativeOcc", "PacificOcc", "HispanicOcc", "MultipleOcc", "OtherOcc", "random_id")
-age_demos <- c("Under35YrsOcc", "X35to44YrsOcc", "X45to54YrsOcc", "X55to64YrsOcc", "X65to74YrsOcc", "X75to84YrsOcc", "X85OverOcc", "random_id")
-educ_demos <- c("LessHSOcc", "HSOcc", "CollegeOcc", "BAOcc", "random_id")
-income_demos <- c("IncomeLess5000", "Income5000_9999", "Income10000_14999", "Income15000_19999", "Income20000_24999", "Income25000_3499", "Income35000_49999", "Income50000_74999", "Income75000_99999", "Income100000_149999", "IncomeMore150000",  "random_id")
+```{r include = FALSE}
+race_demos <- c("WhiteOcc", "BlackOcc", "AsianOcc", "NativeOcc", "PacificOcc", "HispanicOcc", "MultipleOcc", "OtherOcc")
+age_demos <- c("Under35YrsOcc", "X35to44YrsOcc", "X45to54YrsOcc", "X55to64YrsOcc", "X65to74YrsOcc", "X75to84YrsOcc", "X85OverOcc")
+educ_demos <- c("LessHSOcc", "HSOcc", "CollegeOcc", "BAOcc")
+income_demos <- c("IncomeLess5000", "Income5000_9999", "Income10000_14999", "Income15000_19999", "Income20000_24999", "Income25000_3499", "Income35000_49999", "Income50000_74999", "Income75000_99999", "Income100000_149999", "IncomeMore150000")
 
 race_labels <-  c("White", "Black", "Asian", "Native","Pacific", "Hispanic", "Multiple", "Other")
+age_labels <- c("<35", "35-44", "45-54", "55-64", "65-74", "75-84", "85<")
+educ_labels <- c("< HS", "HS", "College", "BA")
+income_labs <- c("<5k", "5k-9k", "10k-14k", "15k-19k", "20k-24k", "25k-34k", "35k-49k", "50k-74k", "75k-99k", "100k-149k", "150k<")
+
 t_race_selection <- training %>% 
-  select(race_demos) %>%
+  select(race_demos, "random_id") %>%
   pivot_longer(-random_id, names_to = "var", values_to = "value") %>%
-  mutate(type = "Testing",
+  mutate(type = "Training",
          var = factor(var, levels = race_demos[-9], labels = race_labels))
 d1_race_selection <- data1 %>% 
-  select(race_demos) %>%
+  select(race_demos, "random_id") %>%
   pivot_longer(-random_id, names_to = "var", values_to = "value") %>%
   mutate(type = "Data 1",
          var = factor(var, levels = race_demos[-9], labels = race_labels))
 d2_race_selection <- data2 %>% 
-  select(race_demos) %>%
+  select(race_demos, "random_id") %>%
   pivot_longer(-random_id, names_to = "var", values_to = "value") %>%
   mutate(type = "Data 2",
          var = factor(var, levels = race_demos[-9], labels = race_labels))
 race_compare_d1 <- bind_rows(t_race_selection, d1_race_selection)
 race_compare_d2 <- bind_rows(t_race_selection, d2_race_selection)
 
-age_labels <- c("<35", "35-44", "45-54", "55-64", "65-74", "75-84", "85<")
+rm(t_race_selection)
+rm(d1_race_selection)
+rm(d2_race_selection)
+
 t_age_selection <- training %>% 
-  select(age_demos) %>%
+  select(age_demos, "random_id") %>%
   pivot_longer(-random_id, names_to = "var", values_to = "value") %>%
-  mutate(type = "Testing", 
+  mutate(type = "Training", 
          var = factor(var, levels = age_demos[-8], labels = age_labels))
 d1_age_selection <- data1 %>% 
-  select(age_demos) %>%
+  select(age_demos, "random_id") %>%
   pivot_longer(-random_id, names_to = "var", values_to = "value") %>%
   mutate(type = "Data 1", 
          var = factor(var, levels = age_demos[-8], labels = age_labels))
 d2_age_selection <- data2 %>% 
-  select(age_demos) %>%
+  select(age_demos, "random_id") %>%
   pivot_longer(-random_id, names_to = "var", values_to = "value") %>%
   mutate(type = "Data 2", 
          var = factor(var, levels = age_demos[-8], labels = age_labels))
 age_compare_d1 <- bind_rows(t_age_selection, d1_age_selection)
 age_compare_d2 <- bind_rows(t_age_selection, d2_age_selection)
 
-educ_labels <- c("< HS", "HS", "College", "BA")
+rm(t_age_selection)
+rm(d1_age_selection)
+rm(d2_age_selection)
+
 t_educ_selection <- training %>% 
-  select(educ_demos) %>%
+  select(educ_demos, "random_id") %>%
   pivot_longer(-random_id, names_to = "var", values_to = "value") %>%
-  mutate(type = "Testing", 
+  mutate(type = "Training", 
          var = factor(var, levels = educ_demos[-5], labels = educ_labels))
 d1_educ_selection <- data1 %>% 
-  select(educ_demos) %>%
+  select(educ_demos, "random_id") %>%
   pivot_longer(-random_id, names_to = "var", values_to = "value") %>%
   mutate(type = "Data 1", 
          var = factor(var, levels = educ_demos[-5], labels = educ_labels))
 d2_educ_selection <- data2 %>% 
-  select(educ_demos) %>%
+  select(educ_demos, "random_id") %>%
   pivot_longer(-random_id, names_to = "var", values_to = "value") %>%
   mutate(type = "Data 2", 
          var = factor(var, levels = educ_demos[-5], labels = educ_labels))
 educ_compare_d1 <- bind_rows(t_educ_selection, d1_educ_selection)
 educ_compare_d2 <- bind_rows(t_educ_selection, d2_educ_selection)
 
-income_labs <- c("<5k", "5k-9k", "10k-14k", "15k-19k", "20k-24k", "25k-34k", "35k-49k", "50k-74k", "75k-99k", "100k-149k", "150k<")
+rm(t_educ_selection)
+rm(d1_educ_selection)
+rm(d2_educ_selection)
 
 t_income_selection <- training %>% 
-  select(income_demos) %>%
+  select(income_demos, "random_id") %>%
   pivot_longer(-random_id, names_to = "var", values_to = "value") %>%
-  mutate(type = "Testing",
+  mutate(type = "Training",
          var = factor(var, levels = income_demos[-12], labels = income_labs))
 d1_income_selection <- data1 %>%
-  select(income_demos) %>%
+  select(income_demos, "random_id") %>%
   pivot_longer(-random_id, names_to = "var", values_to = "value") %>%
   mutate(type = "Data 1",
          var = factor(var, levels = income_demos[-12], labels = income_labs))
 d2_income_selection <- data2 %>%
-  select(income_demos) %>%
+  select(income_demos, "random_id") %>%
   pivot_longer(-random_id, names_to = "var", values_to = "value") %>%
   mutate(type = "Data 2",
          var = factor(var, levels = income_demos[-12], labels = income_labs))
 income_compare_d1 <- bind_rows(t_income_selection, d1_income_selection)
 income_compare_d2 <- bind_rows(t_income_selection, d2_income_selection)
+
+rm(t_income_selection)
+rm(d1_income_selection)
+rm(d2_income_selection)
 
 d11 <- ggplot() +
   geom_boxplot(race_compare_d1, mapping = aes(x = var, y = value, fill = type)) +
@@ -152,7 +202,7 @@ d13 <- ggplot() +
         legend.direction = "horizontal",
         axis.text.y=element_blank(),
         axis.title.y=element_blank(),
-        legend.position = c(0.5, -0.18))
+        legend.position = c(0.5, -0.19))
 
 d14 <- ggplot() +
   geom_boxplot(income_compare_d1, mapping = aes(x = var, y = value, fill = type)) +
@@ -185,7 +235,7 @@ d23 <- ggplot() +
         axis.text.y=element_blank(),
         axis.title.y=element_blank(),
         legend.direction = "horizontal",
-        legend.position = c(0.5, -0.18))
+        legend.position = c(0.5, -0.19))
 
 d24 <- ggplot() +
   geom_boxplot(income_compare_d2, mapping = aes(x = var, y = value, fill = type)) +
@@ -198,14 +248,243 @@ d24 <- ggplot() +
 
 ```{r fig.height = 6}
 (d11 + d12)/(d14 + d13) +
-  plot_annotation(title = "Testing vs Data 2")
+  plot_annotation(title = "Training vs Data 2")
 ```
 
 Across the board, data set 2 and the training set look very similar. This means that a model I train on the entirety of the training dataset will be able to be applied to data set 2 without much trouble. 
 
 ## a. Describe both the regression you ran and the thinking that underlay the choices of what to put in your model.
 
-I approach creating my OLS model two ways. The first way was through using a LASSO regression to understand what variables function as effective predictors, and the second approach was to intuitively reason which variables will contribute to housing prices. In Eric's Office Hours, numerous students discussed the pros and cons of LASSO, and I was interested in trying it out to improve my skills and to identify any variables that might unexpectadly function as good predictors. 
+I approach creating my OLS model two ways. The first way was through using a LASSO regression to understand what variables function as effective predictors, and the second approach was to intuitively reason which variables will contribute to housing prices. In Eric's Office Hours, numerous students discussed the pros and cons of LASSO, and I was interested in trying it out to improve my skills and to identify any variables that might unexpectedly function as good predictors. 
+
+In Appendix 1, I estimate a LASSO model with the method specified in Springer Statistical Learning. This lasso finds that over 20 variables are consistently explanatory for MedianMonthlyHousingCosts. Obviously, this is an over fit. Even out of ~180 variables, estimating a model with over 20 variables is too many degrees of freedom to provide a reasonably intuitive model. This fit does reveal several important factors:
+
+1. Income is key. The regressor with the highest coefficient was constantly Income1000000_149999. This is a uniquely high income bracket as far as the training data set goes. This means that the number of rich people in a given area is correlated with the household prices. This intuitively makes sense as areas with more rich people will tend to have higher housing prices. Furthermore, income generally is concentrated in pockets, so rich areas are typically more uniformly rich (inflating housing prices rapidly).
+1. There appears to be an artificial ceiling set on MedianMonthlyHousingCosts. No observation in the training dataset cost over 2000 dollars per month. This means that the regression becomes flatter on the higher end than one might expect otherwise as further increases in representative covariates do not in turn result in higher Housing Costs. 
+1. 
+
+I use the insight I gain from the LASSO to generate the following model. The model combines the machine precision of the LASSO along with realistic intuition. The income variables are included based on the notion that increases in income are associated with increases in housing cost. As people have more disposable income, they spend more on housing. Furthermore, I include Income100000_149999 as a proxy for wealth concentration. MeanTravelTimeToWorkMin is included because it is highly represented in the LASSO. I include SNAP data to understand poverty and supplemental aid, as that likely impacts housing cost as well. Finally, I include variables to control for and quantify the impact of race on housing cost. 
+
+MedianMonthlyHousingCosts ~ Income100000_149999 + MedianHouseholdIncome + MeanTravelTimeToWorkMin + snap + BAOcc + pctRetiringAge + WhiteNotHispanicOcc + pocOcc + unemp.
+
+```{r}
+OLS <- lm(MedianMonthlyHousingCosts ~ Income100000_149999 + 
+                                      MedianHouseholdIncome +
+                                      MeanTravelTimeToWorkMin + 
+                                      snap + 
+                                      BAOcc +
+                                      pctRetiringAge +
+                                      WhiteNotHispanicOcc +
+                                      pocOcc +
+                                      unemp, data = training)
+
+summary(OLS) %>%
+  tidy() %>%
+  mutate_at(vars(estimate, std.error, statistic), round, digits = 2) %>%
+  kable("latex", booktabs = T, col.names = c("Variable", "Estimate", "Standard Error", "T Statistic", "P Value")) %>%
+  kable_styling(position = "center", latex_options = "hold_position")
+
+ols_predictions <- data1 %>%
+  mutate(Proj = predict(OLS, newdata = .)) %>%
+  select(Proj, everything())
+```
+
+```{r}
+data2_plot_ols <- bind_rows(ols_predictions %>%
+            select(MedianMonthlyHousingCosts = Proj) %>%
+            mutate(type = "Predicted"), training %>% select(MedianMonthlyHousingCosts) %>%
+            mutate(type = "Training")) %>%
+  ggplot() +
+  geom_boxplot(mapping = aes(y = MedianMonthlyHousingCosts, x = type, fill = type)) +
+  labs(title = "Monthly Housing Costs in Prediction vs Training",
+       subtitle = "OLS Model",
+       x = "Data Set",
+       y = "Median Monthly Housing Cost") +
+  theme(legend.position = "none")
+```
+
+## b. Guess what your performance will be in terms of R-squared and beta, when, using data set 2 we run a regression of the form: y = a + beta*y-hat where y-hat is your predicted housing costs and y is the true housing costs. We’d like numeric answers for both the r-squared and beta. Emphasize the logic of why you guessed your guesses.
+
+\begin{wrapfigure}{R}{0.6\textwidth}  
+ \begin{center}
+ \vspace{-15pt}
+```{r out.width = "100%"}
+data2_plot_ols
+```
+ \vspace{-25pt}
+\end{center}
+\end{wrapfigure}
+
+Given that this regression has an R2 value of 0.54, I'd project a similar value for the R2 when we run y = a + beta*y-hat. The close similarity between the training set and data set 2, as shown in my demographic plots above, implies that the distribution of MedianMonthlyHousingCosts will also resemble the data I trained this model on. That might or might not be a fair assumption to make given MedianMonthlyHousingCosts appears to cap at $2000. 
+
+I believe that my beta value is somewhere in the range of 0.7-0.8. This means that I think the overall slope of my predictions does not increase quickly enough as the covariates move upwards, on net. The model is clearly trained on data that has an artificial cap set at $2000 for MedianMonthlyHousingCosts. What that means is that the higher values are not included in the data set so are dragged down dramatically. Thus, when compared, I believe that my model will underestimate more as MedianMonthlyHousingCosts increases.
+
+# 2) Random Forest prediction for median housing costs in set 2
+
+## a. Describe both your model (as in, the regression you ran) and the thinking that underlay the choices of what to put in your model.
+
+For my random forest, I predicted the model on the training data set over night in a separate R script with Median Housing Cost on the left side an all other predictors on the right side. I then saved both the random seed and output of that process to my repository and then load them here.
+
+I chose to run my random forest over all predictors instead of a small subset of predictors because of the ensemble method behind random forests. An issue with estimating decision trees is that any individual split can be critical and suddenly drive the output of the tree to a locally (but not globally) optimal level. When you run only one tree, random chance and a small sample size mean that it's possible to rely extremely heavily on a single predictor or overfit the model. Random forests control for this by aggregating trees, ensuring that only features that repeatedly emerge as important are considered as such. This means that it's theoretically legitimate to run the model over all regressors, as those with more predictive ability overall are selected equally as those that lack predictive ability. I till thing overfitting occurs with my approach, however. 
+
+Unfortunately, the output of the random forest exceeds the memory capacity of TeX so I'm unable to get good output. To visualize this, you can open the RMD and then run the following code chunk and get some good insight. 
+
+```{r echo = TRUE, eval= FALSE}
+load("~/Desktop/ECON21300/Homework 4/Saved/trainingrf.RData")
+load("~/Desktop/ECON21300/Homework 4/Saved/trainingrf_oob.RData")
+
+trainingrf <- train(MedianMonthlyHousingCosts ~ .,
+                        data = training,
+                        method = "rf",
+                        ntree = 600)
+
+trainingrf_oob <- train(MedianMonthlyHousingCosts ~ .,
+                    data = training,
+                    method = "rf",
+                    ntree = 600,
+                    trControl = trainControl(method = "oob"))
+
+# These cause the tex to vomit. 
+trainingrf$finalModel
+randomForest::varImpPlot(trainingrf$finalModel)
+
+rf_predictions <- data1 %>%
+  mutate(Proj = predict(trainingrf, newdata = .)) %>%
+  select(Proj, everything())
+```
+
+```{r cache = TRUE}
+load("~/Desktop/ECON21300/Homework 4/Saved/trainingrf.RData")
+#load("~/Desktop/ECON21300/Homework 4/Saved/trainingrf_oob.RData")
+
+# These cause the tex to vomit. 
+# trainingrf$finalModel
+# randomForest::varImpPlot(trainingrf$finalModel)
+
+rf_predictions <- data1 %>%
+  mutate(Proj = predict(trainingrf, newdata = .)) %>%
+  select(Proj, everything())
+```
+
+```{r}
+data2_plot_rf <- bind_rows(rf_predictions %>%
+            select(MedianMonthlyHousingCosts = Proj) %>%
+            mutate(type = "Predicted"), training %>% select(MedianMonthlyHousingCosts) %>%
+            mutate(type = "Training")) %>%
+  ggplot() +
+  geom_boxplot(mapping = aes(y = MedianMonthlyHousingCosts, x = type, fill = type)) +
+  labs(title = "Monthly Housing Costs in Prediction vs Training",
+       subtitle = "Random Forest Model",
+       x = "Data Set",
+       y = "Median Monthly Housing Cost") +
+  theme(legend.position = "none")
+```
+
+## b. Guess what your performance will be in terms of R-squared and beta, when, using data set 2 we run a regression of the form y = a + beta*y-hat where y-hat is your predicted housing costs and y is the true housing costs. We’d like numeric answers for both the r-squared and beta. Emphasize the logic of why you guessed your guesses.
+
+\begin{wrapfigure}{R}{0.6\textwidth}  
+ \begin{center}
+ \vspace{-15pt}
+```{r out.width = "100%"}
+data2_plot_rf
+```
+ \vspace{-25pt}
+\end{center}
+\end{wrapfigure}
+
+According to the model, 83.4% of out-of-bag samples are properly explained by the random forest model I generate. Because the testing data set closely models the distribution of variables in the training data set, I think that an arbitrary bag from the training data set will also approximate the distribution in the testing data set. I believe that can be proven via the central limit theorem more rigorously, but that's a little besides the point. Thus, I believe that my model will have an R2 value of around 0.8. I imagine it will be slightly lower to be conservative in my estimate. I am also worried about the impact of multicolinearity. 
+
+Secondly, I believe that my beta value will be close to 1 for the random forest. While it might systematically over or underestimate the housing cost (which would be represented by a change in alpha), I believe that the random forest's bootstrapping algorithm and success in out-of-bag modeling implies that it is sufficiently capable at modeling more diverse growth trends of covariates than OLS. Logically, the model was success over a diverse subsets of its own training data. The data set we are attempting to analyze resembles those subsets. Thus, I believe it accurately captures the underlying relationships. 
+
+## c. Which do you think will do better in out-of-sample predictions, random forest or OLS?
+
+I think that my random forest will provide a better fit to data set 2 than the OLS model. This is primarily due to the fact that I think my OLS model is severely underestimating the upper end of Housing Cost due to the cap it is forced to include in its fitting. Random forests are able to bootstrap samples unlike OLS which means that the effect of this top-end underestimation will be reduced. I think that is a key difference between OLS and random forest in this instance that will make random forest superior. Even though I believe my random forest is overfitting, I think the relative impact of the training sampling affects OLS more.  
+
+# 3) What happens when your prediction data doesn’t mirror your test data?
+
+In comparison to data set 2, data set 3 looks very different than the training data set.
+
+```{r fig.height = 6}
+(d21 + d22)/(d24 + d23) +
+  plot_annotation(title = "Training vs Data 3")
+```
+
+If I were to run the model I define over the entire training data set and use to solve the first two problems on data set 3, I will not draw effective conclusions as the underlying samples do not overlap. I need to train a model on a subset of the training data frame that resembles data set 3 in order to accurately effectively predict the median housing costs of homes in data set 3.
+
+## a. OLS - Describe your modeling approach and the thinking that underlies your choices. Specifically, make sure you address what you did to go from a good prediction in-sample (training data) to a good prediction out-of-sample (data set 3). 
+
+Given that the data given as training data is clearly is not representative of the data we are given in set 3, I produce a subset of training data that as closely approximates the distribution of variables in data set 3 as I can produce while still achieving a large sample size. I select between 5% and 30% of the top richest observations in the training data set as a bootleg version of formal bootstrapping. My hypothesis is that data set 3 comes from a richer area given that the data is overwhelmingly skewed towards people with incomes over $150,000. Obviously, this is a flawed model as it will be biased towards the lower end of some variables, and the higher end of some other variables, but this spread will be significantly less than the spread that currently exists with the training data compared to data set 3. 
+
+I choose the variables for my OLS here based less on intuition and more on predictive power to attempt to minimize the impact sampling bias can possibly have.
+
+```{r}
+data2_mean <- data2 %>%
+  summarize_all(mean) %>%
+  pivot_longer(c(-random_id), names_to = "vars", values_to = "values")%>%
+  pull(values)
+
+data2_sd <- data2 %>%
+  summarize_all(sd) %>%
+  pivot_longer(c(-random_id), names_to = "vars", values_to = "values")%>%
+  pull(values)
+
+data2_names <- data2 %>%
+  summarize_all(sd) %>%
+  pivot_longer(c(-random_id), names_to = "vars", values_to = "values")%>%
+  pull(vars)
+
+selector <- tibble(names = data2_names, 
+       lower = data2_mean -  data2_sd - data2_sd) %>%
+  pivot_wider(names_from = names, values_from = lower)
+
+rand <- runif(1, min = 0.05, max = 0.3)
+
+ols_attempt <- training %>%
+  arrange(desc(IncomeMore150000)) %>%
+  top_frac(rand)
+
+data3_ols <- lm(MedianMonthlyHousingCosts ~ Income100000_149999 + Income75000_99999 + MeanTravelTimeToWorkMin + PopScientificProfessional + NativeOcc + Income20000_24999	+ Income15000_19999 + Income10000_14999 + snap, data = ols_attempt)
+
+data3_ols_predictions <- data2 %>%
+  mutate(Proj = predict(data3_ols, newdata = .)) %>%
+  select(Proj, everything())
+```
+
+## b. RF - Describe your modeling approach and the thinking that underlies your choices. Specifically, make sure you address what you did to go from a good prediction in-sample (training data) to a good prediction out-of-sample (data set 3).
+
+I cannot use the same approach as I used for OLS because the data set will then be too small to run a forest over. I choose to take a subset of the data that is as large as possible while still allowing it to generate at least 200 trees. In my experimentation, I found that was the top 43% of income data. 
+
+This is also not a very precise method, but it's the best I could come up with. 
+
+```{r}
+rf_attempt <- training %>%
+  arrange(desc(IncomeMore150000)) %>%
+  top_frac(0.43)
+
+rf_manualprebootstrap <- train(MedianMonthlyHousingCosts ~ .,
+                    data = rf_attempt,
+                    method = "rf",
+                    ntree = 200,
+                    trControl = trainControl(method = "oob"))
+
+data3_rf_predictions <- data2 %>%
+  mutate(Proj = predict(rf_manualprebootstrap, newdata = .)) %>%
+  select(Proj, everything())
+```
+
+## c. Which do you think will give better out-of-sample predictions now, random forest or OLS?
+
+Given that my attempt at bootstrapping is significantly more effective in the OLS model because I have enough data to modify the distribution meaningfully, I think that OLS will be more accurate than the Random Forest at predicting for data set 3. 
+
+## d. Explain why answering this question is harder with random forest than with OLS.
+
+We simply do not have a large enough sample realistic training data we can pull from the training set provided to bootstrap enough decision trees that model the distribution of data set 3. OLS, on the other hand, is able to work with any N sample size large enough. Because resampling is not an issue with OLS, working with OLS when you don't have a realible training set to work with is easier. 
+
+My method to solve this problem is a good attempt, but probably falls short. I don't think my method of validating if the subsetted data is closer to data set 3 is effective and reliable, which is important for OLS. 
+
+\newpage
+
+## Appendix 1 - Exploratory LASSO
 
 ```{r}
 training_MedianMonthlyHousingCosts <- training %>%
@@ -215,112 +494,36 @@ training_MedianMonthlyHousingCosts <- training %>%
 
 training_allvars <- model.matrix(MedianMonthlyHousingCosts~., training)[,-175]
 
-lasso1 <- glmnet(training_allvars, training_MedianMonthlyHousingCosts, family = "gaussian")
-
-coef(lasso2)
+lasso1_lam <- cv.glmnet(training_allvars, training_MedianMonthlyHousingCosts, alpha = 1)
+optimal_lam <- lasso1_lam$lambda.1se
+lasso1 <- glmnet(training_allvars, training_MedianMonthlyHousingCosts, alpha = 1, lambda = optimal_lam)
+coef(lasso1) %>%
+  tidy() %>%
+  mutate(valuebig = round(value, digits = 3)) %>%
+  arrange(desc(valuebig)) %>%
+  select(row, valuebig) %>%
+  kable("latex", booktabs = T, caption = "LASSO Model as Exploratory Analysis", col.names = c("Variable Name", "Coefficient")) %>%
+  kable_styling(position = "center", latex_options = "hold_position")
 ```
 
-```{r}
-selection <- training %>%
-  select(MedianHouseholdIncome, 
-         MeanHouseholdIncome, 
-         WhiteOcc, 
-         CollegeOcc, BAOcc, 
-         MedianMonthlyHousingCosts) %>%
-  mutate(MedianHouseholdIncome = as.numeric(MedianHouseholdIncome),
-         MeanHouseholdIncome = as.numeric(MeanHouseholdIncome),
-         WhiteOcc = as.numeric(WhiteOcc)/100,
-         CollegeOcc = as.numeric(CollegeOcc)/100,
-         BAOcc = as.numeric(BAOcc)/100) %>%
-  drop_na()
+## Appendix 2 - Producing the combined DF we need to submit
 
-selection
+```{r echo = TRUE}
+data2_ols <- ols_predictions %>%
+  select(random_id, ols_predictions = Proj)
+data2_rf <- rf_predictions %>%
+  select(random_id, rf_predictions = Proj)
 
-# There are a number of entries that do not have MedianHouseholdIncome data. 
-# Overwhelmingly, these entries also are zeroed out for Median Monthly Housing Costs
-# selection %>% 
-#   filter(is.na(MedianHouseholdIncome)) %>%
-#   count(MedianMonthlyHousingCosts) %>%
-#   kable("latex", booktabs = T, 
-#         caption = "Median Monthly Housing Costs for Entries With No Data on Median Household Income")
+data2_complete <- inner_join(data2_ols, data2_rf)
 
-ggplot(selection, mapping = aes(x = MedianHouseholdIncome, y = MedianMonthlyHousingCosts)) +
-  geom_point(alpha = 0.1) +
-  geom_smooth(method = "lm") +
-  scale_x_continuous(labels = scales::dollar) +
-  scale_y_continuous(labels = scales::dollar) +
-  labs(title = "Median Monthly Housing Cost by Median Household Income",
-       x = "Median Household Income",
-       y = "Median Monthly Housing Cost")
+data3_ols <- data3_ols_predictions %>%
+  select(random_id, ols_predictions = Proj)
+data3_rf <- data3_rf_predictions %>%
+  select(random_id, rf_predictions = Proj)
 
-ggplot(selection, mapping = aes(x = WhiteOcc, y = MedianMonthlyHousingCosts)) +
-  geom_point(alpha = 0.1) +
-  geom_smooth(method = "lm") +
-  scale_x_continuous(labels = scales::percent) +
-  scale_y_continuous(labels = scales::dollar) +
-  labs(title = "Median Monthly Housing Cost by White Occupancy Rate",
-       x = "White Occupancy Rate",
-       y = "Median Monthly Housing Cost")
+data3_complete <- inner_join(data3_ols, data3_rf)
 
-# for OLS, as few variables as possible that comunicate well (4-5-15 variables max). Test out seeral models. 
+submission <- bind_rows(data2_complete, data3_complete)
 
-# We can use lasso to select variables for the OLS for dataset one as long as you justify that the sample set is similar to the first dataset but if you were to apply it to the second data set you would get bad answers. You can justify that the training and dataset 1 look the same by just doing some plots of variables to show they look similar. You need to theoretically justify a different model for the selection of variables to use in the second data set with OLS because it's fucked up. Think about what'd make sense and come up with 3-4-5 stories that are possible for dataset number 2. Look at what makes test set 2 different from training set and make sure it doesn't skew torwards those highly represented areas. 
-
-# You can sorta do whatever you want for RFs.
-
-
-# There is an educated way to guess alpha (how much systematically your predictions are above or below the actual values) for the second dataset. 
-
-# Note the second dataset had a weird selection of variables. It's not fundamentally flawed but they just picked some bad shit out. 
-
-
-# Learn about lasso: https://faculty.marshall.usc.edu/gareth-james/ISL/ISLR%20Seventh%20Printing.pdf
+write_csv(submission, here("Homework 4", "neeraj_predictions.csv"))
 ```
-
-```{r}
-
-```
-
-## b. Guess what your performance will be in terms of R-squared and beta, when, using data set 2 we run a regression of the form:
-
-y = a + beta*y-hat
-
-where  y-hat is your predicted housing costs and y is the true housing costs. We’d like numeric answers for both the r-squared and beta. Emphasize the logic of why you guessed your guesses. (5 points)
-
-# 2) Random Forest prediction for median housing costs in data set 2
-
-Using random forest techniques, come up with your best prediction for median housing costs In data set 2.
-
-## a.Describe both your model (as in, the regression you ran) and the thinking that underlay the choices of what to put in your model. (5 points)
-
-For my random forest, I predicted the model on the training dataset over night in a separate R script with Median Housing Cost on the left side an all other predictors on the right side. I then saved both the random seed and output of that process to my repository and then load them here.
-
-I chose to run my random forest over all predictors instead of a small subset of predictors because of the ensamble method behind random forests. An issue with estimating decision trees is that any individual split can be critical and suddenly drive the output of the tree to a locally (but not globally) optimal level. When you run only one tree, random chance and a small sample size mean that it's possible to rely extremely heavily on a single predictor or overfit the model. Random forests control for this by aggregating trees, ensuring that only features that repeadidly emerge as important are considered as such. This means that it's theoretically legitimate to run the model over all regressors, as those with more predictive ability overall are selected equally as those that lack predictive ability. 
-
-```{r}
-load("~/Desktop/ECON21300/Homework 4/Saved/seed_trainingrf.RData")
-load("~/Desktop/ECON21300/Homework 4/Saved/trainingrf.RData")
-load("~/Desktop/ECON21300/Homework 4/Saved/trainingrf_oob.RData")
-
-trainingrf$finalModel
-randomForest::varImpPlot(trainingrf$finalModel)
-```
-
-## b. Guess what your performance will be in terms of R-squared and beta, when, using data set 2 we run a regression of the form:
-
-y = a + beta*y-hat
-
-where y-hat is your predicted housing costs and y is the true housing costs. We’d like numeric answers for both the r-squared and beta. Emphasize the logic of why you guessed your guesses. (5 points)
-
-## c. Which do you think will do better in out-of-sample predictions, random forest or OLS? (5 points)
-
-# 3) What happens when your prediction data doesn’t mirror your test data?
-
-In comparision to data set 2, data set 3 looks very different than the training dataset.
-
-```{r fig.height = 6}
-(d21 + d22)/(d24 + d23) +
-  plot_annotation(title = "Testing vs Data 3")
-```
-
-If I were to run the model I define over the entire training data set and use to solve the first two problems on data set 3, I will not draw effective conslusions as the underlying samples do not overlap. I need to train a model on a subset of the training data frame that resembles data set 3 in order to accurately effectively predict the median housing costs of homes in data set 3.
